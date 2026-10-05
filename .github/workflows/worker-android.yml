@@ -49,6 +49,7 @@ jobs:
       - name: Cài công cụ Android
         run: |
           set -euo pipefail
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager 'platforms;android-34' 'build-tools;35.0.0'
           echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
