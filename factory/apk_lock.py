@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -19,7 +20,16 @@ GATE_CLASS = "Lcom/factory/LicenseGate;"
 def _run(args: list[str], *, env: dict | None = None) -> None:
     try:
         subprocess.run(args, check=True, capture_output=True, timeout=180, env=env)
-    except (subprocess.CalledProcessError, OSError, subprocess.TimeoutExpired):
+    except (subprocess.CalledProcessError, OSError, subprocess.TimeoutExpired) as exc:
+        if args[0] == "apktool":
+            stderr = getattr(exc, "stderr", "") or ""
+            if isinstance(stderr, bytes):
+                stderr = stderr.decode(errors="replace")
+            code = getattr(exc, "returncode", None)
+            raise RuntimeError(
+                f"Lệnh {shlex.join(args)} thất bại (mã thoát: "
+                f"{code if code is not None else 'không có'}; stderr cuối: {stderr[-400:]!r})"
+            ) from None
         # Công cụ ký có thể in mật khẩu ra stderr; không chuyển stderr vào lỗi/log.
         raise RuntimeError(f"Công cụ xử lý APK thất bại: {Path(args[0]).name}") from None
 
