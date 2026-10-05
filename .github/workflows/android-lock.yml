@@ -70,12 +70,20 @@ jobs:
           printf '%s' "$KEYSTORE_B64" | base64 --decode > "$APK_KEYSTORE"
           mkdir -p build_out
           python3 tools/lock_apk.py --source android-sample/app/build/outputs/apk/debug/app-debug.apk --out build_out/app.apk
-          sha256sum build_out/app.apk | awk '{print $1}' > build_out/app.apk.sha256
+      - name: Mã hóa artifact theo đơn
+        env:
+          ARTIFACT_SECRET: ${{ secrets.ARTIFACT_SECRET }}
+          ORDER_CODE: ${{ inputs.order_code }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 tools/encrypt_artifact.py
       - uses: actions/upload-artifact@v4
         with:
           name: app-release
           path: |
-            build_out/app.apk
-            build_out/app.apk.sha256
+            build_out/app.apk.enc
+            build_out/app.apk.enc.sha256
+            build_out/app.apk.enc.hmac
           if-no-files-found: error
           retention-days: 1

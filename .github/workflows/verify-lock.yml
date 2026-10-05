@@ -30,6 +30,13 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends apktool
           gradle --no-daemon -p android-sample :app:assembleDebug
+      - name: Chẩn đoán apktool
+        continue-on-error: true
+        run: |
+          set +e
+          which apktool java aapt aapt2; apktool --version; java -version
+          apktool d -f android-sample/app/build/outputs/apk/debug/app-debug.apk -o "$RUNNER_TEMP/diag" 2>&1 | tail -40
+          echo "exit=$?"
       - name: Tạo kết quả mặc định và kho khóa tạm
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
