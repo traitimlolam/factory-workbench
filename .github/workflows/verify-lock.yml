@@ -55,7 +55,7 @@ jobs:
           target: default
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: python3 tools/verify_lock.py
+          script: python3 -u tools/verify_lock.py
       - name: Lưu kết quả kể cả khi phép thử thất bại
         if: always()
         uses: actions/upload-artifact@v4
