@@ -59,6 +59,9 @@ def build(project: Path, out: Path, env: dict[str, str]) -> None:
         raise ValueError("Chưa cài Theos")
     out.parent.mkdir(parents=True, exist_ok=True)
     header = write_config(project, config)
+    # Workflow chạy với umask 077 để bảo vệ bí mật, nhưng Theos đòi thư mục control 0755-0775.
+    # Chỉ nới umask cho lần biên dịch này (không có bí mật nào đi qua make).
+    old_umask = os.umask(0o022)
     try:
         subprocess.run(["make", "clean", "package", "FINALPACKAGE=1"], cwd=project,
                        env=env, check=True)
@@ -67,6 +70,7 @@ def build(project: Path, out: Path, env: dict[str, str]) -> None:
             raise RuntimeError("Theos phải tạo đúng một gói .deb")
         shutil.copy2(packages[0], out)
     finally:
+        os.umask(old_umask)
         header.unlink(missing_ok=True)
 
 
