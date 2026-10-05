@@ -1,0 +1,9 @@
+Package: vn.nguyentronghieu.factorysample
+Name: Factory Sample
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: Minimal rootless SpringBoard startup notification sample
+Maintainer: Factory Workbench
+Author: Factory Workbench
+Section: Tweaks
+Depends: firmware (>= 15.0)

@@ -1,0 +1,21 @@
+name: Kiểm logic khóa tweak iOS trên macOS
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-14
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Biên dịch bằng clang và chạy năm phép thử
+        run: python3 -u tools/verify_ios_lock.py
+      - name: Lưu kết quả kể cả khi thất bại
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-ios-lock-result
+          path: verify-ios-result.json
+          if-no-files-found: error
+          retention-days: 1

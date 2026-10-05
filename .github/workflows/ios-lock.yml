@@ -1,0 +1,51 @@
+name: Khóa tweak iOS mẫu
+run-name: build-${{ inputs.order_code }}
+on:
+  workflow_dispatch:
+    inputs:
+      order_code: {required: true, type: string}
+      kind: {required: true, type: choice, options: [trial, paid]}
+      model: {required: true, type: string}
+      sdk: {required: true, type: string}
+      license_id: {required: true, type: string}
+      trial_seconds: {required: false, type: string}
+      udid: {required: true, type: string}
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cài Theos và iOS SDK đã ghim commit
+        run: tools/install_ios_toolchain.sh
+      - name: Biên dịch tweak rootless đã khóa
+        env:
+          LOCK_KIND: ${{ inputs.kind }}
+          LOCK_MODEL: ${{ inputs.model }}
+          LOCK_SDK: ${{ inputs.sdk }}
+          LOCK_LICENSE_ID: ${{ inputs.license_id }}
+          LOCK_TRIAL_SECONDS: ${{ inputs.trial_seconds }}
+          LOCK_UDID: ${{ inputs.udid }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 tools/lock_ios.py
+      - name: Mã hóa gói theo đơn
+        env:
+          ARTIFACT_SECRET: ${{ secrets.ARTIFACT_SECRET }}
+          ORDER_CODE: ${{ inputs.order_code }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 tools/encrypt_ios.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-sample-release
+          path: |
+            build_out/app.deb.enc
+            build_out/app.deb.enc.sha256
+            build_out/app.deb.enc.hmac
+          if-no-files-found: error
+          retention-days: 1

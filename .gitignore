@@ -5,3 +5,5 @@ build_out/
 *.keystore
 __pycache__/
 verify-result.json
+FactoryConfig.h
+verify-ios-result.json
