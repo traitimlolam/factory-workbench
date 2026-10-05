@@ -26,6 +26,7 @@ jobs:
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager 'platforms;android-34' 'build-tools;35.0.0'
           echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends apktool
           gradle --no-daemon -p android-sample :app:assembleDebug
