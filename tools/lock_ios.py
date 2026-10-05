@@ -11,7 +11,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 UDID = re.compile(r"(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{8}-[0-9a-fA-F]{16})\Z")
 LICENSE = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
-MODEL = re.compile(r"[A-Za-z0-9._ -]{1,64}\Z")
+MODEL = re.compile(r"[A-Za-z0-9._, -]{1,64}\Z")
 SDK = re.compile(r"[0-9]{1,2}(?:\.[0-9]{1,2}){0,2}\Z")
 
 
