@@ -10,7 +10,7 @@ extern void FactoryFeatureDidStart(UIViewController *controller);
 static NSString *factoryDeviceUDID(void) {
     void *library = dlopen("/usr/lib/libMobileGestalt.dylib", RTLD_LAZY);
     if (!library) return nil;
-    CFTypeRef (*copyAnswer)(CFStringRef) = dlsym(library, "MGCopyAnswer");
+    CFTypeRef (*copyAnswer)(CFStringRef) = (CFTypeRef (*)(CFStringRef))dlsym(library, "MGCopyAnswer");
     CFTypeRef value = copyAnswer ? copyAnswer(CFSTR("UniqueDeviceID")) : NULL;
     NSString *answer = nil;
     if (value && CFGetTypeID(value) == CFStringGetTypeID())
@@ -51,8 +51,14 @@ static long long factoryFirstSeen(long long now) {
     }
     NSLog(@"FactorySample: SpringBoard started; sample active");
     dispatch_async(dispatch_get_main_queue(), ^{
-        UIWindow *window = [UIApplication sharedApplication].keyWindow;
-        UIViewController *controller = window.rootViewController;
+        UIViewController *controller = nil;
+        for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+                if (window.isKeyWindow) { controller = window.rootViewController; break; }
+            }
+            if (controller) break;
+        }
         if (!controller) return;
         FactoryFeatureDidStart(controller);
     });
