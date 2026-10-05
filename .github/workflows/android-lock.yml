@@ -1,9 +1,10 @@
 name: Khóa APK mẫu
-run-name: build-${{ inputs.order_code }}
+run-name: ${{ inputs.dispatch_id && format('build-{0}-{1}', inputs.order_code, inputs.dispatch_id) || format('build-{0}', inputs.order_code) }}
 
 on:
   workflow_dispatch:
     inputs:
+      dispatch_id: {required: false, default: '', type: string}
       order_code:
         required: true
         type: string
