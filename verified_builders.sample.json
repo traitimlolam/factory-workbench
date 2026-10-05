@@ -1,0 +1,14 @@
+{
+  "android_sample": {
+    "kiem_chung": false,
+    "ngay": "",
+    "ten_may": "",
+    "nguoi_xac_nhan": ""
+  },
+  "worker_android_app": {
+    "kiem_chung": false,
+    "ngay": "",
+    "ten_may": "",
+    "nguoi_xac_nhan": ""
+  }
+}

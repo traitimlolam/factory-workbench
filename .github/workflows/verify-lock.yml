@@ -1,0 +1,64 @@
+name: Kiểm khóa APK trên máy ảo Android
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - uses: android-actions/setup-android@v3
+      - name: Cài công cụ và build app mẫu
+        run: |
+          set -euo pipefail
+          sdkmanager 'platforms;android-34' 'build-tools;35.0.0'
+          echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends apktool
+          gradle --no-daemon -p android-sample :app:assembleDebug
+      - name: Tạo kết quả mặc định và kho khóa tạm
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 -c 'import json; from tools.verify_lock import OUTPUT, result_template; OUTPUT.write_text(json.dumps(result_template(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")'
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/factory.jks"
+      - name: Bật KVM cho runner Linux
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Thử khóa trên emulator API 34
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          APK_KEYSTORE: ${{ runner.temp }}/factory.jks
+          APK_KS_PASS: ${{ secrets.KS_PASS }}
+          APK_KEY_PASS: ${{ secrets.KS_PASS }}
+          APK_KS_ALIAS: ${{ secrets.KS_ALIAS }}
+        with:
+          api-level: 34
+          target: default
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: python3 tools/verify_lock.py
+      - name: Lưu kết quả kể cả khi phép thử thất bại
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-lock-result
+          path: verify-result.json
+          if-no-files-found: error
+          retention-days: 1

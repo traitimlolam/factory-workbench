@@ -1,0 +1,24 @@
+{
+  "android_sample": {
+    "repo": "OWNER/factory-workbench",
+    "workflow": "android-lock.yml",
+    "ref": "main",
+    "runner": "linux",
+    "est_minutes": 8,
+    "monthly_cap_runs": 30,
+    "artifact_name": "app-release",
+    "format": "apk",
+    "require_hash": true
+  },
+  "worker_android_app": {
+    "repo": "OWNER/factory-workbench",
+    "workflow": "worker-android.yml",
+    "ref": "main",
+    "runner": "linux",
+    "est_minutes": 10,
+    "monthly_cap_runs": 20,
+    "artifact_name": "worker-app-release",
+    "format": "apk",
+    "require_hash": true
+  }
+}
