@@ -1,0 +1,92 @@
+name: Phân tích file từ xa
+run-name: scan-${{ inputs.source_id }}-${{ inputs.ticket_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        required: true
+        type: string
+      source_id:
+        required: true
+        type: string
+      ticket_id:
+        required: true
+        type: string
+      expected_hash:
+        required: false
+        type: string
+      order_code:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate inputs and fetch file
+        env:
+          URL: ${{ inputs.download_url }}
+          SOURCE_ID: ${{ inputs.source_id }}
+          TICKET_ID: ${{ inputs.ticket_id }}
+          EXPECTED_HASH: ${{ inputs.expected_hash }}
+          ORDER_CODE: ${{ inputs.order_code }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_ID" =~ ^[A-Za-z0-9_-]{1,100}$ ]]
+          [[ "$TICKET_ID" =~ ^[0-9]+$ ]]
+          [[ "$ORDER_CODE" =~ ^[A-Za-z0-9_-]{1,100}$ ]]
+          [[ -z "$EXPECTED_HASH" || "$EXPECTED_HASH" =~ ^[0-9a-f]{64}$ ]]
+          python3 tools/scan_download.py
+
+      - name: Extract and analyze (sandbox)
+        env:
+          SCAN_MAX_FILES: "50000"
+          SCAN_MAX_SIZE: "2147483648"
+          SCAN_MAX_DEPTH: "32"
+          SCAN_MAX_NAME: "255"
+        run: |
+          set -euo pipefail
+          cd workspace
+          mkdir -p extracted
+          
+          python3 ../tools/safe_extract.py staging/downloaded_file.bin extracted
+
+          cd extracted
+          
+          # Extract features
+          mkdir -p ../result
+          find . -type f \( -name "*.h" -o -name "*.xm" -o -name "Info.plist" -o -name "AndroidManifest.xml" \) > ../result/file_list.txt
+          echo "Tìm thấy $(cat ../result/file_list.txt | wc -l) file quan trọng"
+          # Thực tế ở đây chạy script phân tích, ta chỉ nén kết quả
+          tar -czf ../result.tar.gz ../result
+
+      - name: Encrypt result
+        env:
+          ARTIFACT_SECRET: ${{ secrets.ARTIFACT_SECRET }}
+          ORDER_CODE: ${{ inputs.order_code }}
+        run: |
+          set -euo pipefail
+          umask 077
+          cp workspace/result.tar.gz build_out_result.tar.gz
+          
+          # Giả lập đường dẫn gốc được mong đợi từ script mã hóa
+          mkdir -p build_out
+          mv build_out_result.tar.gz build_out/app.apk
+          python3 tools/encrypt_artifact.py
+          mv build_out/app.apk.enc build_out/result.tar.gz.enc
+          mv build_out/app.apk.enc.sha256 build_out/result.tar.gz.enc.sha256
+          mv build_out/app.apk.enc.hmac build_out/result.tar.gz.enc.hmac
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-result
+          path: build_out/result.tar.gz.enc*
+          retention-days: 1
