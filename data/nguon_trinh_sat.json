@@ -1,0 +1,236 @@
+[
+    {
+        "id": "kho_nha_github_traitimlolam",
+        "level": 0,
+        "type": "kho_nha",
+        "platform": "ios",
+        "url_goc": "https://github.com/traitimlolam",
+        "search_method": "api",
+        "allow_download": true
+    },
+    {
+        "id": "kho_nha_xgps_templates",
+        "level": 0,
+        "type": "kho_nha",
+        "platform": "ios",
+        "url_goc": "local://xgps_templates",
+        "search_method": "danh muc",
+        "allow_download": true
+    },
+    {
+        "id": "kho_nha_catalog_templates",
+        "level": 0,
+        "type": "kho_nha",
+        "platform": "chung",
+        "url_goc": "local://catalog/templates_dir",
+        "search_method": "danh muc",
+        "allow_download": true
+    },
+    {
+        "id": "tra_cuu_appledb",
+        "level": 1,
+        "type": "tra_cuu",
+        "platform": "ios",
+        "url_goc": "https://appledb.dev",
+        "search_method": "trang tim kiem",
+        "allow_download": false
+    },
+    {
+        "id": "tra_cuu_ios_cfw_guide",
+        "level": 1,
+        "type": "tra_cuu",
+        "platform": "ios",
+        "url_goc": "https://ios.cfw.guide",
+        "search_method": "trang tim kiem",
+        "allow_download": false
+    },
+    {
+        "id": "tra_cuu_canijailbreak",
+        "level": 1,
+        "type": "tra_cuu",
+        "platform": "ios",
+        "url_goc": "https://canijailbreak.com",
+        "search_method": "trang tim kiem",
+        "allow_download": false
+    },
+    {
+        "id": "kho_tweak_ios_repo_updates",
+        "level": 2,
+        "type": "kho_tweak",
+        "platform": "ios",
+        "url_goc": "https://www.ios-repo-updates.com",
+        "search_method": "trang tim kiem",
+        "allow_download": true
+    },
+    {
+        "id": "kho_tweak_havoc",
+        "level": 2,
+        "type": "kho_tweak",
+        "platform": "ios",
+        "url_goc": "https://havoc.app",
+        "search_method": "trang tim kiem",
+        "allow_download": false
+    },
+    {
+        "id": "kho_tweak_chariz",
+        "level": 2,
+        "type": "kho_tweak",
+        "platform": "ios",
+        "url_goc": "https://chariz.com",
+        "search_method": "trang tim kiem",
+        "allow_download": false
+    },
+    {
+        "id": "kho_tweak_bigboss",
+        "level": 2,
+        "type": "kho_tweak",
+        "platform": "ios",
+        "url_goc": "http://apt.thebigboss.org",
+        "search_method": "danh muc",
+        "allow_download": true
+    },
+    {
+        "id": "kho_tweak_packix",
+        "level": 2,
+        "type": "kho_tweak",
+        "platform": "ios",
+        "url_goc": "https://repo.packix.com",
+        "search_method": "trang tim kiem",
+        "allow_download": true
+    },
+    {
+        "id": "kho_tweak_dynastic",
+        "level": 2,
+        "type": "kho_tweak",
+        "platform": "ios",
+        "url_goc": "https://repo.dynastic.co",
+        "search_method": "trang tim kiem",
+        "allow_download": true
+    },
+    {
+        "id": "kho_tweak_roothide",
+        "level": 2,
+        "type": "kho_tweak",
+        "platform": "ios",
+        "url_goc": "https://roothide.github.io",
+        "search_method": "danh muc",
+        "allow_download": true
+    },
+    {
+        "id": "kho_tweak_sparkdev",
+        "level": 2,
+        "type": "kho_tweak",
+        "platform": "ios",
+        "url_goc": "https://sparkdev.me",
+        "search_method": "danh muc",
+        "allow_download": true
+    },
+    {
+        "id": "kho_tweak_tigsoftware",
+        "level": 2,
+        "type": "kho_tweak",
+        "platform": "ios",
+        "url_goc": "https://tigsoftware.top",
+        "search_method": "danh muc",
+        "allow_download": true
+    },
+    {
+        "id": "ma_nguon_github",
+        "level": 3,
+        "type": "ma_nguon",
+        "platform": "chung",
+        "url_goc": "https://github.com",
+        "search_method": "api",
+        "allow_download": true
+    },
+    {
+        "id": "ma_nguon_gitlab",
+        "level": 3,
+        "type": "ma_nguon",
+        "platform": "chung",
+        "url_goc": "https://gitlab.com",
+        "search_method": "api",
+        "allow_download": true
+    },
+    {
+        "id": "ma_nguon_codeberg",
+        "level": 3,
+        "type": "ma_nguon",
+        "platform": "chung",
+        "url_goc": "https://codeberg.org",
+        "search_method": "trang tim kiem",
+        "allow_download": true
+    },
+    {
+        "id": "android_fdroid",
+        "level": 4,
+        "type": "android",
+        "platform": "android",
+        "url_goc": "https://f-droid.org",
+        "search_method": "trang tim kiem",
+        "allow_download": true
+    },
+    {
+        "id": "android_apkmirror",
+        "level": 4,
+        "type": "android",
+        "platform": "android",
+        "url_goc": "https://www.apkmirror.com",
+        "search_method": "trang tim kiem",
+        "allow_download": true
+    },
+    {
+        "id": "android_apkpure",
+        "level": 4,
+        "type": "android",
+        "platform": "android",
+        "url_goc": "https://apkpure.com",
+        "search_method": "trang tim kiem",
+        "allow_download": true
+    },
+    {
+        "id": "android_developer",
+        "level": 4,
+        "type": "android",
+        "platform": "android",
+        "url_goc": "https://developer.android.com",
+        "search_method": "trang tim kiem",
+        "allow_download": false
+    },
+    {
+        "id": "tai_lieu_headers",
+        "level": 5,
+        "type": "tai_lieu",
+        "platform": "ios",
+        "url_goc": "https://github.com/SparkDev97/iOS14-Runtime-Headers",
+        "search_method": "danh muc",
+        "allow_download": true
+    },
+    {
+        "id": "tai_lieu_ethanarbuckle",
+        "level": 5,
+        "type": "tai_lieu",
+        "platform": "ios",
+        "url_goc": "https://github.com/EthanArbuckle",
+        "search_method": "danh muc",
+        "allow_download": true
+    },
+    {
+        "id": "tai_lieu_theos",
+        "level": 5,
+        "type": "tai_lieu",
+        "platform": "ios",
+        "url_goc": "https://github.com/theos/sdks",
+        "search_method": "danh muc",
+        "allow_download": true
+    },
+    {
+        "id": "web_chung",
+        "level": 6,
+        "type": "web",
+        "platform": "chung",
+        "url_goc": "https://duckduckgo.com",
+        "search_method": "trang tim kiem",
+        "allow_download": false
+    }
+]

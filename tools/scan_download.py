@@ -11,7 +11,11 @@ import sys
 import tempfile
 from urllib.parse import urljoin, urlsplit
 
-SOURCES = Path(__file__).resolve().parents[3] / "factory/data/nguon_trinh_sat.json"
+_HERE = Path(__file__).resolve()
+# Repo workbench trên GitHub: data/ nằm cạnh tools/; repo xưởng: factory/data/.
+SOURCES = next((c for c in (_HERE.parents[1] / "data" / "nguon_trinh_sat.json",
+                            _HERE.parents[3] / "factory/data/nguon_trinh_sat.json") if c.exists()),
+               _HERE.parents[1] / "data" / "nguon_trinh_sat.json")
 MAX_REDIRECTS = 3
 
 
