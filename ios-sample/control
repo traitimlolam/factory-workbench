@@ -1,9 +1,9 @@
-Package: vn.nguyentronghieu.factorysample
-Name: Factory Sample
-Version: 1.0.0
+Package: vn.nguyentronghieu.confirmrotate
+Name: ConfirmRotate
+Version: 1.3.0
 Architecture: iphoneos-arm64
-Description: Minimal rootless SpringBoard startup notification sample
-Maintainer: Factory Workbench
-Author: Factory Workbench
+Description: Confirm screen rotation with iOS 14 style button (48x48, cornerRadius 12, no haptics)
+Maintainer: Nguyễn Trọng Hiếu
+Author: Nguyễn Trọng Hiếu
 Section: Tweaks
 Depends: firmware (>= 15.0)
