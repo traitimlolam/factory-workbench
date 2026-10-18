@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>entry</key>
+	<dict>
+		<key>cell</key>
+		<string>PSLinkCell</string>
+		<key>label</key>
+		<string>FakeCellular5G</string>
+	</dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Cài đặt</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>vn.nguyentronghieu.fakecellular5g</string>
+			<key>key</key>
+			<string>enabled</string>
+			<key>label</key>
+			<string>Bật FakeCellular5G</string>
+			<key>PostNotification</key>
+			<string>vn.nguyentronghieu.fakecellular5g/settingsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Kiểu mạng hiển thị</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSListItemsController</string>
+			<key>defaults</key>
+			<string>vn.nguyentronghieu.fakecellular5g</string>
+			<key>key</key>
+			<string>networkType</string>
+			<key>default</key>
+			<string>5G</string>
+			<key>label</key>
+			<string>Kiểu mạng</string>
+			<key>validTitles</key>
+			<array>
+				<string>4G</string>
+				<string>LTE</string>
+				<string>5G</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>4G</string>
+				<string>LTE</string>
+				<string>5G</string>
+			</array>
+			<key>PostNotification</key>
+			<string>vn.nguyentronghieu.fakecellular5g/settingsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>FakeCellular5G v1.1.2 — Bản quyền vĩnh viễn</string>
+		</dict>
+	</array>
+	<key>title</key>
+	<string>FakeCellular5G</string>
+</dict>
+</plist>

@@ -9,7 +9,4 @@ FakeCellular5G_FILES := Tweak.x FactoryLicenseGate.c
 FakeCellular5G_FRAMEWORKS := UIKit Foundation CoreFoundation
 FakeCellular5G_CFLAGS := -fobjc-arc -Wno-deprecated-declarations
 
-SUBPROJECTS += FakeCellular5GPrefs
-
 include $(THEOS_MAKE_PATH)/tweak.mk
-include $(THEOS_MAKE_PATH)/aggregate.mk
