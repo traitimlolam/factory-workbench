@@ -39,26 +39,24 @@
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSListItemsController</string>
+			<string>PSSegmentCell</string>
 			<key>defaults</key>
 			<string>vn.nguyentronghieu.fakecellular5g</string>
 			<key>key</key>
 			<string>networkType</string>
 			<key>default</key>
 			<string>5G</string>
-			<key>label</key>
-			<string>Kiểu mạng</string>
 			<key>validTitles</key>
 			<array>
-				<string>4G</string>
-				<string>LTE</string>
 				<string>5G</string>
+				<string>LTE</string>
+				<string>4G</string>
 			</array>
 			<key>validValues</key>
 			<array>
-				<string>4G</string>
-				<string>LTE</string>
 				<string>5G</string>
+				<string>LTE</string>
+				<string>4G</string>
 			</array>
 			<key>PostNotification</key>
 			<string>vn.nguyentronghieu.fakecellular5g/settingsChanged</string>
@@ -67,7 +65,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>FakeCellular5G v1.1.2 — Bản quyền vĩnh viễn</string>
+			<string>FakeCellular5G v1.1.3 — Bản quyền vĩnh viễn</string>
 		</dict>
 	</array>
 	<key>title</key>

@@ -49,9 +49,17 @@ static void reloadPrefs(void) {
 
     val = CFPreferencesCopyAppValue(CFSTR("networkType"), (CFStringRef)@"vn.nguyentronghieu.fakecellular5g");
     if (val) {
-        if (CFGetTypeID(val) == CFStringGetTypeID())
-            g_netType = [(__bridge NSString *)val copy];
+        if (CFGetTypeID(val) == CFStringGetTypeID()) {
+            NSString *stored = [(__bridge NSString *)val copy];
+            // Only accept valid values; stale/junk defaults fall back to 5G
+            if ([stored isEqualToString:@"4G"] || [stored isEqualToString:@"LTE"] || [stored isEqualToString:@"5G"])
+                g_netType = stored;
+            else
+                g_netType = @"5G";
+        }
         CFRelease(val);
+    } else {
+        g_netType = @"5G";
     }
 }
 
@@ -127,11 +135,11 @@ static void applyFake(_UIStatusBarData *data) {
         // Keep Wi-Fi icon; blank the cellular string
         data.cellularEntry.string = @"";
     } else {
-        data.cellularEntry.string = g_netType;
-        // type: 3=4G, 4=LTE, 5=5G
-        if ([g_netType isEqualToString:@"4G"])       data.cellularEntry.type = 3;
-        else if ([g_netType isEqualToString:@"LTE"]) data.cellularEntry.type = 4;
-        else                                          data.cellularEntry.type = 5;
+        data.cellularEntry.string = g_netType ?: @"5G";
+        // iOS cellularEntry.type: 5 = 4G, 6 = LTE, 9 = 5G
+        if ([g_netType isEqualToString:@"4G"])       data.cellularEntry.type = 5;
+        else if ([g_netType isEqualToString:@"LTE"]) data.cellularEntry.type = 6;
+        else                                          data.cellularEntry.type = 9;
     }
 }
 
@@ -155,6 +163,38 @@ static void applyFake(_UIStatusBarData *data) {
 %hook _UIStatusBarDataCellularEntry
 - (NSInteger)bars {
     return (g_enabled && isTweakLicensed()) ? 4 : %orig;
+}
+- (NSInteger)type {
+    if (g_enabled && isTweakLicensed()) {
+        if ([g_netType isEqualToString:@"4G"]) return 5;
+        if ([g_netType isEqualToString:@"LTE"]) return 6;
+        return 9; // 5G
+    }
+    return %orig;
+}
+- (NSString *)string {
+    if (g_enabled && isTweakLicensed()) {
+        return g_netType ?: @"5G";
+    }
+    return %orig;
+}
+%end
+
+%hook _UIStatusBarCellularItem
+- (id)_stringForCellularType:(long long)type {
+    if (g_enabled && isTweakLicensed() && g_netType.length) {
+        return g_netType;
+    }
+    return %orig;
+}
+%end
+
+%hook _UIStatusBarCellularCondensedItem
+- (id)_stringForCellularType:(long long)type {
+    if (g_enabled && isTweakLicensed() && g_netType.length) {
+        return g_netType;
+    }
+    return %orig;
 }
 %end
 
