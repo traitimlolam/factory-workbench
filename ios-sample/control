@@ -1,8 +1,8 @@
-Package: vn.nguyentronghieu.confirmrotate
-Name: ConfirmRotate
-Version: 1.3.0
+Package: vn.nguyentronghieu.fakecellular5g
+Name: FakeCellular5G
+Version: 1.0.0
 Architecture: iphoneos-arm64
-Description: Confirm screen rotation with iOS 14 style button (48x48, cornerRadius 12, no haptics)
+Description: Force 4 bars 5G when no SIM/Wi-Fi, keep Wi-Fi when connected. 1-hour trial.
 Maintainer: Nguyễn Trọng Hiếu
 Author: Nguyễn Trọng Hiếu
 Section: Tweaks
