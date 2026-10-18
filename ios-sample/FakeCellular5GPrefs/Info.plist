@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>FakeCellular5GPrefs</string>
+    <key>CFBundleIdentifier</key>
+    <string>vn.nguyentronghieu.fakecellular5g.prefs</string>
+    <key>CFBundleName</key>
+    <string>FakeCellular5G</string>
+    <key>CFBundleVersion</key>
+    <string>1.1.1</string>
+    <key>NSPrincipalClass</key>
+    <string>FakeCellular5GRootListController</string>
+    <key>DTPlatformName</key>
+    <string>iphoneos</string>
+    <key>MinimumOSVersion</key>
+    <string>15.0</string>
+</dict>
+</plist>

@@ -5,14 +5,16 @@
 <dict>
     <key>entry</key>
     <dict>
-        <key>bundle</key>
-        <string>FakeCellular5GPrefs</string>
-        <key>category</key>
-        <string>Tweaks</string>
+        <key>cell</key>
+        <string>PSLinkCell</string>
         <key>label</key>
         <string>FakeCellular5G</string>
+        <key>bundle</key>
+        <string>FakeCellular5GPrefs</string>
         <key>detail</key>
         <string>FakeCellular5GRootListController</string>
+        <key>category</key>
+        <string>Tweaks</string>
     </dict>
 </dict>
 </plist>
