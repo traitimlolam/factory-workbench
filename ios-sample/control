@@ -1,9 +1,9 @@
 Package: vn.nguyentronghieu.fakecellular5g
 Name: FakeCellular5G
-Version: 1.0.0
+Version: 1.1.0
 Architecture: iphoneos-arm64
-Description: Force 4 bars 5G when no SIM/Wi-Fi, keep Wi-Fi when connected. 1-hour trial.
+Description: Force 4 bars + 4G/LTE/5G label when no SIM/Wi-Fi. Settings menu to switch type. Permanent license.
 Maintainer: Nguyễn Trọng Hiếu
 Author: Nguyễn Trọng Hiếu
 Section: Tweaks
-Depends: firmware (>= 15.0)
+Depends: firmware (>= 15.0), preferenceloader
