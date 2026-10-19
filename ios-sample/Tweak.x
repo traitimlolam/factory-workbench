@@ -13,9 +13,16 @@
 
 @interface _UIStatusBarDataCellularEntry : _UIStatusBarDataEntry
 @property (nonatomic, assign) NSInteger status;
+@property (nonatomic, assign) NSInteger displayValue;
 @property (nonatomic, assign) NSInteger bars;
 @property (nonatomic, copy)   NSString *string;
+@property (nonatomic, copy)   NSString *crossfadeString;
+@property (nonatomic, copy)   NSString *badgeString;
 @property (nonatomic, assign) NSInteger type;
+@property (nonatomic, assign) BOOL wifiCallingEnabled;
+@property (nonatomic, assign) BOOL callForwardingEnabled;
+@property (nonatomic, assign) BOOL showsSOSWhenDisabled;
+@property (nonatomic, assign) BOOL sosAvailable;
 @end
 
 @interface _UIStatusBarDataWifiEntry : _UIStatusBarDataEntry
@@ -24,6 +31,7 @@
 
 @interface _UIStatusBarData : NSObject
 @property (nonatomic, strong) _UIStatusBarDataCellularEntry *cellularEntry;
+@property (nonatomic, strong) _UIStatusBarDataCellularEntry *secondaryCellularEntry;
 @property (nonatomic, strong) _UIStatusBarDataWifiEntry    *wifiEntry;
 - (id)copyWithZone:(struct _NSZone *)zone;
 @end
@@ -51,7 +59,6 @@ static void reloadPrefs(void) {
     if (val) {
         if (CFGetTypeID(val) == CFStringGetTypeID()) {
             NSString *stored = [(__bridge NSString *)val copy];
-            // Only accept valid values; stale/junk defaults fall back to 5G
             if ([stored isEqualToString:@"4G"] || [stored isEqualToString:@"LTE"] || [stored isEqualToString:@"5G"])
                 g_netType = stored;
             else
@@ -117,30 +124,80 @@ static BOOL isTweakLicensed(void) {
 }
 
 // ── Core hook logic ────────────────────────────────────────────────────────────
+static void applyEntry(_UIStatusBarDataCellularEntry *entry, BOOL wifiOn) {
+    if (!entry) return;
+    entry.enabled = YES;
+    entry.bars    = 4;
+    entry.status  = 5;
+    entry.displayValue = 4;
+
+    NSInteger targetType = 9;
+    if ([g_netType isEqualToString:@"4G"])       targetType = 5;
+    else if ([g_netType isEqualToString:@"LTE"]) targetType = 6;
+    else                                          targetType = 9;
+
+    entry.type = targetType;
+
+    if (wifiOn) {
+        entry.string = @"";
+        entry.crossfadeString = @"";
+        entry.badgeString = @"";
+    } else {
+        entry.string = g_netType ?: @"5G";
+        entry.crossfadeString = g_netType ?: @"5G";
+        entry.badgeString = g_netType ?: @"5G";
+    }
+}
+
 static void applyFake(_UIStatusBarData *data) {
     if (!data) return;
     BOOL wifiOn = (data.wifiEntry && data.wifiEntry.isEnabled && data.wifiEntry.status > 0);
 
-    if (!data.cellularEntry) {
-        Class cls = NSClassFromString(@"_UIStatusBarDataCellularEntry");
-        if (cls) data.cellularEntry = [[cls alloc] init];
+    Class cls = NSClassFromString(@"_UIStatusBarDataCellularEntry");
+    if (!data.cellularEntry && cls) {
+        data.cellularEntry = [[cls alloc] init];
     }
-    if (!data.cellularEntry) return;
-
-    data.cellularEntry.enabled = YES;
-    data.cellularEntry.bars    = 4;
-    data.cellularEntry.status  = 5;
-
-    if (wifiOn) {
-        // Keep Wi-Fi icon; blank the cellular string
-        data.cellularEntry.string = @"";
-    } else {
-        data.cellularEntry.string = g_netType ?: @"5G";
-        // iOS cellularEntry.type: 5 = 4G, 6 = LTE, 9 = 5G
-        if ([g_netType isEqualToString:@"4G"])       data.cellularEntry.type = 5;
-        else if ([g_netType isEqualToString:@"LTE"]) data.cellularEntry.type = 6;
-        else                                          data.cellularEntry.type = 9;
+    if (data.cellularEntry) {
+        applyEntry(data.cellularEntry, wifiOn);
     }
+
+    if ([data respondsToSelector:@selector(secondaryCellularEntry)]) {
+        if (!data.secondaryCellularEntry && cls) {
+            data.secondaryCellularEntry = [[cls alloc] init];
+        }
+        if (data.secondaryCellularEntry) {
+            applyEntry(data.secondaryCellularEntry, wifiOn);
+        }
+    }
+}
+
+// ── StringView Override Helper ────────────────────────────────────────────────
+static inline BOOL isCellularNetworkIndicator(NSString *text) {
+    if (!text || text.length == 0 || text.length > 8) return NO;
+    // Fast rejects: clock strings have ':', battery strings have '%'
+    if ([text containsString:@":"] || [text containsString:@"%"]) return NO;
+
+    NSString *t = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *u = [t uppercaseString];
+
+    return ([u isEqualToString:@"5G"] ||
+            [u isEqualToString:@"5G+"] ||
+            [u isEqualToString:@"5G UC"] ||
+            [u isEqualToString:@"5G UW"] ||
+            [u isEqualToString:@"5GE"] ||
+            [u isEqualToString:@"LTE"] ||
+            [u isEqualToString:@"LTE+"] ||
+            [u isEqualToString:@"4G"] ||
+            [u isEqualToString:@"4G+"] ||
+            [u isEqualToString:@"3G"] ||
+            [u isEqualToString:@"3G+"] ||
+            [u isEqualToString:@"2G"] ||
+            [u isEqualToString:@"1X"] ||
+            [u isEqualToString:@"1XRTT"] ||
+            [u isEqualToString:@"E"] ||
+            [u isEqualToString:@"EDGE"] ||
+            [u isEqualToString:@"GPRS"] ||
+            [u isEqualToString:@"SOS"]);
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
@@ -164,6 +221,12 @@ static void applyFake(_UIStatusBarData *data) {
 - (NSInteger)bars {
     return (g_enabled && isTweakLicensed()) ? 4 : %orig;
 }
+- (NSInteger)displayValue {
+    return (g_enabled && isTweakLicensed()) ? 4 : %orig;
+}
+- (NSInteger)status {
+    return (g_enabled && isTweakLicensed()) ? 5 : %orig;
+}
 - (NSInteger)type {
     if (g_enabled && isTweakLicensed()) {
         if ([g_netType isEqualToString:@"4G"]) return 5;
@@ -177,6 +240,33 @@ static void applyFake(_UIStatusBarData *data) {
         return g_netType ?: @"5G";
     }
     return %orig;
+}
+- (NSString *)crossfadeString {
+    if (g_enabled && isTweakLicensed()) {
+        return g_netType ?: @"5G";
+    }
+    return %orig;
+}
+- (NSString *)badgeString {
+    if (g_enabled && isTweakLicensed()) {
+        return g_netType ?: @"5G";
+    }
+    return %orig;
+}
+- (BOOL)isEnabled {
+    return (g_enabled && isTweakLicensed()) ? YES : %orig;
+}
+%end
+
+%hook _UIStatusBarCellularSignalView
+- (NSInteger)numberOfActiveBars {
+    return (g_enabled && isTweakLicensed()) ? 4 : %orig;
+}
+%end
+
+%hook _UIStatusBarDualCellularSignalView
+- (NSInteger)numberOfActiveBars {
+    return (g_enabled && isTweakLicensed()) ? 4 : %orig;
 }
 %end
 
@@ -195,6 +285,24 @@ static void applyFake(_UIStatusBarData *data) {
         return g_netType;
     }
     return %orig;
+}
+%end
+
+%hook _UIStatusBarStringView
+- (void)setText:(NSString *)text {
+    if (g_enabled && isTweakLicensed() && isCellularNetworkIndicator(text)) {
+        %orig(g_netType ?: @"5G");
+        return;
+    }
+    %orig(text);
+}
+
+- (void)setOriginalText:(NSString *)text {
+    if (g_enabled && isTweakLicensed() && isCellularNetworkIndicator(text)) {
+        %orig(g_netType ?: @"5G");
+        return;
+    }
+    %orig(text);
 }
 %end
 
