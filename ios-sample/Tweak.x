@@ -1,7 +1,6 @@
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>
-#import <dlfcn.h>
 #import <notify.h>
 #import "FactoryConfig.h"
 #import "FactoryLicenseGate.h"
@@ -45,86 +44,59 @@ static BOOL  g_enabled     = YES;
 static NSString *g_netType = @"5G";
 
 static void reloadPrefs(void) {
-    CFPreferencesAppSynchronize((CFStringRef)@"vn.nguyentronghieu.fakecellular5g");
-    CFPropertyListRef val;
-
-    val = CFPreferencesCopyAppValue(CFSTR("enabled"), (CFStringRef)@"vn.nguyentronghieu.fakecellular5g");
-    if (val) {
-        if (CFGetTypeID(val) == CFBooleanGetTypeID())
-            g_enabled = CFBooleanGetValue((CFBooleanRef)val);
-        CFRelease(val);
+    NSString *path1 = @"/var/mobile/Library/Preferences/vn.nguyentronghieu.fakecellular5g.plist";
+    NSString *path2 = @"/var/jb/var/mobile/Library/Preferences/vn.nguyentronghieu.fakecellular5g.plist";
+    
+    NSDictionary *dict = [NSDictionary dictionaryWithContentsOfFile:path1];
+    if (!dict || dict.count == 0) {
+        dict = [NSDictionary dictionaryWithContentsOfFile:path2];
     }
 
-    val = CFPreferencesCopyAppValue(CFSTR("networkType"), (CFStringRef)@"vn.nguyentronghieu.fakecellular5g");
-    if (val) {
-        if (CFGetTypeID(val) == CFStringGetTypeID()) {
-            NSString *stored = [(__bridge NSString *)val copy];
-            if ([stored isEqualToString:@"4G"] || [stored isEqualToString:@"LTE"] || [stored isEqualToString:@"5G"])
-                g_netType = stored;
-            else
-                g_netType = @"5G";
+    if (dict && dict.count > 0) {
+        if (dict[@"enabled"] != nil) {
+            g_enabled = [dict[@"enabled"] boolValue];
+        } else {
+            g_enabled = YES;
         }
-        CFRelease(val);
+
+        NSString *type = dict[@"networkType"];
+        if ([type isEqualToString:@"4G"] || [type isEqualToString:@"LTE"] || [type isEqualToString:@"5G"]) {
+            g_netType = type;
+        } else {
+            g_netType = @"5G";
+        }
     } else {
-        g_netType = @"5G";
+        // Fallback: CFPreferences API
+        CFPreferencesAppSynchronize((CFStringRef)@"vn.nguyentronghieu.fakecellular5g");
+        CFPropertyListRef val;
+
+        val = CFPreferencesCopyAppValue(CFSTR("enabled"), (CFStringRef)@"vn.nguyentronghieu.fakecellular5g");
+        if (val) {
+            if (CFGetTypeID(val) == CFBooleanGetTypeID())
+                g_enabled = CFBooleanGetValue((CFBooleanRef)val);
+            CFRelease(val);
+        } else {
+            g_enabled = YES;
+        }
+
+        val = CFPreferencesCopyAppValue(CFSTR("networkType"), (CFStringRef)@"vn.nguyentronghieu.fakecellular5g");
+        if (val) {
+            if (CFGetTypeID(val) == CFStringGetTypeID()) {
+                NSString *stored = [(__bridge NSString *)val copy];
+                if ([stored isEqualToString:@"4G"] || [stored isEqualToString:@"LTE"] || [stored isEqualToString:@"5G"])
+                    g_netType = stored;
+                else
+                    g_netType = @"5G";
+            }
+            CFRelease(val);
+        } else {
+            g_netType = @"5G";
+        }
     }
-}
-
-// ── License helpers ───────────────────────────────────────────────────────────
-static NSString *factoryDeviceUDID(void) {
-    void *lib = dlopen("/usr/lib/libMobileGestalt.dylib", RTLD_LAZY);
-    if (!lib) return nil;
-    CFTypeRef (*copy)(CFStringRef) = (CFTypeRef (*)(CFStringRef))dlsym(lib, "MGCopyAnswer");
-    CFTypeRef v = copy ? copy(CFSTR("UniqueDeviceID")) : NULL;
-    NSString *s = nil;
-    if (v && CFGetTypeID(v) == CFStringGetTypeID()) s = [(__bridge NSString *)v copy];
-    if (v) CFRelease(v);
-    dlclose(lib);
-    return s;
-}
-
-static long long factoryFirstSeen(long long now) {
-    NSString *folder = @"/var/mobile/Library/Application Support/FakeCellular5G";
-    NSString *file   = [folder stringByAppendingPathComponent:
-                        [NSString stringWithUTF8String:FACTORY_LICENSE_ID]];
-    NSString *saved  = [NSString stringWithContentsOfFile:file
-                                                 encoding:NSUTF8StringEncoding error:nil];
-    if (saved.length) {
-        long long ts = 0;
-        NSScanner *sc = [NSScanner scannerWithString:saved];
-        if ([sc scanLongLong:&ts] && sc.isAtEnd && ts > 0) return ts;
-        return -1;
-    }
-    NSError *err = nil;
-    [[NSFileManager defaultManager] createDirectoryAtPath:folder
-                                 withIntermediateDirectories:YES attributes:nil error:&err];
-    if (err) return -1;
-    [[NSString stringWithFormat:@"%lld", now] writeToFile:file atomically:YES
-                                                encoding:NSUTF8StringEncoding error:&err];
-    return err ? -1 : now;
-}
-
-static BOOL isTweakLicensed(void) {
-    static BOOL cached = NO;
-    static NSTimeInterval lastCheck = 0;
-    NSTimeInterval now_d = [[NSDate date] timeIntervalSince1970];
-    if (now_d - lastCheck < 3.0 && lastCheck > 0) return cached;
-    lastCheck = now_d;
-
-    long long now   = (long long)now_d;
-    long long first = factoryFirstSeen(now);
-    NSString *udid  = factoryDeviceUDID();
-    if (!udid) { cached = NO; return NO; }
-
-    FactoryLicenseDecision d = factory_license_check(
-        udid.UTF8String, FACTORY_ALLOWED_UDID,
-        now, first, FACTORY_TRIAL_SECONDS, FACTORY_KIND);
-    cached = (d.allowed == 1);
-    return cached;
 }
 
 // ── Core hook logic ────────────────────────────────────────────────────────────
-static void applyEntry(_UIStatusBarDataCellularEntry *entry, BOOL wifiOn) {
+static void applyEntry(_UIStatusBarDataCellularEntry *entry) {
     if (!entry) return;
     entry.enabled = YES;
     entry.bars    = 4;
@@ -137,28 +109,24 @@ static void applyEntry(_UIStatusBarDataCellularEntry *entry, BOOL wifiOn) {
     else                                          targetType = 9;
 
     entry.type = targetType;
-
-    if (wifiOn) {
-        entry.string = @"";
-        entry.crossfadeString = @"";
-        entry.badgeString = @"";
-    } else {
-        entry.string = g_netType ?: @"5G";
-        entry.crossfadeString = g_netType ?: @"5G";
-        entry.badgeString = g_netType ?: @"5G";
-    }
+    entry.string = g_netType ?: @"5G";
+    entry.crossfadeString = g_netType ?: @"5G";
+    entry.badgeString = g_netType ?: @"5G";
+    entry.wifiCallingEnabled = NO;
+    entry.callForwardingEnabled = NO;
+    entry.showsSOSWhenDisabled = NO;
+    entry.sosAvailable = NO;
 }
 
 static void applyFake(_UIStatusBarData *data) {
     if (!data) return;
-    BOOL wifiOn = (data.wifiEntry && data.wifiEntry.isEnabled && data.wifiEntry.status > 0);
 
     Class cls = NSClassFromString(@"_UIStatusBarDataCellularEntry");
     if (!data.cellularEntry && cls) {
         data.cellularEntry = [[cls alloc] init];
     }
     if (data.cellularEntry) {
-        applyEntry(data.cellularEntry, wifiOn);
+        applyEntry(data.cellularEntry);
     }
 
     if ([data respondsToSelector:@selector(secondaryCellularEntry)]) {
@@ -166,14 +134,14 @@ static void applyFake(_UIStatusBarData *data) {
             data.secondaryCellularEntry = [[cls alloc] init];
         }
         if (data.secondaryCellularEntry) {
-            applyEntry(data.secondaryCellularEntry, wifiOn);
+            applyEntry(data.secondaryCellularEntry);
         }
     }
 }
 
 // ── StringView Override Helper ────────────────────────────────────────────────
 static inline BOOL isCellularNetworkIndicator(NSString *text) {
-    if (!text || text.length == 0 || text.length > 8) return NO;
+    if (!text || text.length == 0 || text.length > 12) return NO;
     // Fast rejects: clock strings have ':', battery strings have '%'
     if ([text containsString:@":"] || [text containsString:@"%"]) return NO;
 
@@ -197,14 +165,16 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
             [u isEqualToString:@"E"] ||
             [u isEqualToString:@"EDGE"] ||
             [u isEqualToString:@"GPRS"] ||
-            [u isEqualToString:@"SOS"]);
+            [u isEqualToString:@"SOS"] ||
+            [u isEqualToString:@"NO SERVICE"] ||
+            [u isEqualToString:@"NO SIM"]);
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
 %hook _UIStatusBarData
 - (id)copyWithZone:(struct _NSZone *)z {
     _UIStatusBarData *copy = %orig;
-    if (copy && g_enabled && isTweakLicensed()) applyFake(copy);
+    if (copy && g_enabled) applyFake(copy);
     return copy;
 }
 %end
@@ -212,23 +182,23 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
 %hook _UIStatusBarDataAggregator
 - (_UIStatusBarData *)_currentData {
     _UIStatusBarData *data = %orig;
-    if (data && g_enabled && isTweakLicensed()) applyFake(data);
+    if (data && g_enabled) applyFake(data);
     return data;
 }
 %end
 
 %hook _UIStatusBarDataCellularEntry
 - (NSInteger)bars {
-    return (g_enabled && isTweakLicensed()) ? 4 : %orig;
+    return g_enabled ? 4 : %orig;
 }
 - (NSInteger)displayValue {
-    return (g_enabled && isTweakLicensed()) ? 4 : %orig;
+    return g_enabled ? 4 : %orig;
 }
 - (NSInteger)status {
-    return (g_enabled && isTweakLicensed()) ? 5 : %orig;
+    return g_enabled ? 5 : %orig;
 }
 - (NSInteger)type {
-    if (g_enabled && isTweakLicensed()) {
+    if (g_enabled) {
         if ([g_netType isEqualToString:@"4G"]) return 5;
         if ([g_netType isEqualToString:@"LTE"]) return 6;
         return 9; // 5G
@@ -236,43 +206,46 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
     return %orig;
 }
 - (NSString *)string {
-    if (g_enabled && isTweakLicensed()) {
+    if (g_enabled) {
         return g_netType ?: @"5G";
     }
     return %orig;
 }
 - (NSString *)crossfadeString {
-    if (g_enabled && isTweakLicensed()) {
+    if (g_enabled) {
         return g_netType ?: @"5G";
     }
     return %orig;
 }
 - (NSString *)badgeString {
-    if (g_enabled && isTweakLicensed()) {
+    if (g_enabled) {
         return g_netType ?: @"5G";
     }
     return %orig;
 }
 - (BOOL)isEnabled {
-    return (g_enabled && isTweakLicensed()) ? YES : %orig;
+    return g_enabled ? YES : %orig;
 }
 %end
 
 %hook _UIStatusBarCellularSignalView
 - (NSInteger)numberOfActiveBars {
-    return (g_enabled && isTweakLicensed()) ? 4 : %orig;
+    return g_enabled ? 4 : %orig;
+}
+- (NSInteger)numberOfBars {
+    return g_enabled ? 4 : %orig;
 }
 %end
 
 %hook _UIStatusBarDualCellularSignalView
 - (NSInteger)numberOfActiveBars {
-    return (g_enabled && isTweakLicensed()) ? 4 : %orig;
+    return g_enabled ? 4 : %orig;
 }
 %end
 
 %hook _UIStatusBarCellularItem
 - (id)_stringForCellularType:(long long)type {
-    if (g_enabled && isTweakLicensed() && g_netType.length) {
+    if (g_enabled && g_netType.length) {
         return g_netType;
     }
     return %orig;
@@ -281,7 +254,7 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
 
 %hook _UIStatusBarCellularCondensedItem
 - (id)_stringForCellularType:(long long)type {
-    if (g_enabled && isTweakLicensed() && g_netType.length) {
+    if (g_enabled && g_netType.length) {
         return g_netType;
     }
     return %orig;
@@ -290,7 +263,7 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
 
 %hook _UIStatusBarStringView
 - (void)setText:(NSString *)text {
-    if (g_enabled && isTweakLicensed() && isCellularNetworkIndicator(text)) {
+    if (g_enabled && isCellularNetworkIndicator(text)) {
         %orig(g_netType ?: @"5G");
         return;
     }
@@ -298,7 +271,7 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
 }
 
 - (void)setOriginalText:(NSString *)text {
-    if (g_enabled && isTweakLicensed() && isCellularNetworkIndicator(text)) {
+    if (g_enabled && isCellularNetworkIndicator(text)) {
         %orig(g_netType ?: @"5G");
         return;
     }
@@ -308,9 +281,15 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
 
 // ── Constructor ───────────────────────────────────────────────────────────────
 %ctor {
+    %init;
     reloadPrefs();
-    int token = 0;
-    notify_register_dispatch("vn.nguyentronghieu.fakecellular5g/settingsChanged", &token, dispatch_get_main_queue(), ^(int t) {
-        reloadPrefs();
-    });
+    
+    CFNotificationCenterAddObserver(
+        CFNotificationCenterGetDarwinNotifyCenter(),
+        NULL,
+        (CFNotificationCallback)reloadPrefs,
+        CFSTR("vn.nguyentronghieu.fakecellular5g/settingsChanged"),
+        NULL,
+        CFNotificationSuspensionBehaviorDeliverImmediately
+    );
 }
