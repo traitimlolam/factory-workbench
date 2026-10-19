@@ -119,12 +119,6 @@ static void triggerStatusBarRefresh(void) {
         if ([agg respondsToSelector:@selector(_updateSignalStrengthItem)]) {
             [agg _updateSignalStrengthItem];
         }
-        if ([agg respondsToSelector:@selector(_updateDataNetworkItem)]) {
-            [agg _updateDataNetworkItem];
-        }
-        if ([agg respondsToSelector:@selector(_updateServiceItem)]) {
-            [agg _updateServiceItem];
-        }
     }
 }
 
@@ -141,10 +135,10 @@ static void applyEntry(_UIStatusBarDataCellularEntry *entry) {
     entry.status  = 5;
     entry.displayValue = 4;
 
-    NSInteger targetType = 9;
-    if ([g_netType isEqualToString:@"4G"])       targetType = 5;
-    else if ([g_netType isEqualToString:@"LTE"]) targetType = 6;
-    else                                          targetType = 9;
+    NSInteger targetType = 11; // 5G standard in iOS 17 enum
+    if ([g_netType isEqualToString:@"4G"])       targetType = 6;
+    else if ([g_netType isEqualToString:@"LTE"]) targetType = 7;
+    else                                          targetType = 11;
 
     entry.type = targetType;
     entry.string = g_netType ?: @"5G";
@@ -179,32 +173,24 @@ static void applyFake(_UIStatusBarData *data) {
 
 // ── StringView Override Helper ────────────────────────────────────────────────
 static inline BOOL isCellularNetworkIndicator(NSString *text) {
-    if (!text || text.length == 0 || text.length > 12) return NO;
+    if (!text || text.length == 0 || text.length > 25) return NO;
     if ([text containsString:@":"] || [text containsString:@"%"]) return NO;
 
-    NSString *t = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    NSString *u = [t uppercaseString];
+    NSString *folded = [text stringByFoldingWithOptions:NSDiacriticInsensitiveSearch | NSCaseInsensitiveSearch locale:[NSLocale currentLocale]];
+    NSString *t = [folded stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 
-    return ([u isEqualToString:@"5G"] ||
-            [u isEqualToString:@"5G+"] ||
-            [u isEqualToString:@"5G UC"] ||
-            [u isEqualToString:@"5G UW"] ||
-            [u isEqualToString:@"5GE"] ||
-            [u isEqualToString:@"LTE"] ||
-            [u isEqualToString:@"LTE+"] ||
-            [u isEqualToString:@"4G"] ||
-            [u isEqualToString:@"4G+"] ||
-            [u isEqualToString:@"3G"] ||
-            [u isEqualToString:@"3G+"] ||
-            [u isEqualToString:@"2G"] ||
-            [u isEqualToString:@"1X"] ||
-            [u isEqualToString:@"1XRTT"] ||
-            [u isEqualToString:@"E"] ||
-            [u isEqualToString:@"EDGE"] ||
-            [u isEqualToString:@"GPRS"] ||
-            [u isEqualToString:@"SOS"] ||
-            [u isEqualToString:@"NO SERVICE"] ||
-            [u isEqualToString:@"NO SIM"]);
+    if ([t isEqualToString:@"5g"] || [t isEqualToString:@"5g+"] || [t isEqualToString:@"5g uc"] ||
+        [t isEqualToString:@"5g uw"] || [t isEqualToString:@"5ge"] || [t isEqualToString:@"lte"] ||
+        [t isEqualToString:@"lte+"] || [t isEqualToString:@"4g"] || [t isEqualToString:@"4g+"] ||
+        [t isEqualToString:@"3g"] || [t isEqualToString:@"2g"] || [t isEqualToString:@"1x"] ||
+        [t isEqualToString:@"e"] || [t isEqualToString:@"edge"] || [t isEqualToString:@"gprs"] ||
+        [t isEqualToString:@"sos"] || [t containsString:@"sos"] ||
+        [t containsString:@"no sim"] || [t containsString:@"khong co sim"] ||
+        [t containsString:@"no service"] || [t containsString:@"khong co dich vu"] ||
+        [t containsString:@"searching"] || [t containsString:@"dang tim kiem"]) {
+        return YES;
+    }
+    return NO;
 }
 
 // ── Default Group: UIKit & Modern Status Bar ─────────────────────────────────
@@ -236,9 +222,9 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
 }
 - (NSInteger)type {
     if (g_enabled) {
-        if ([g_netType isEqualToString:@"4G"]) return 5;
-        if ([g_netType isEqualToString:@"LTE"]) return 6;
-        return 9; // 5G
+        if ([g_netType isEqualToString:@"4G"]) return 6;
+        if ([g_netType isEqualToString:@"LTE"]) return 7;
+        return 11; // 5G
     }
     return %orig;
 }
@@ -325,15 +311,37 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
 
 - (unsigned long long)dataNetworkType {
     if (g_enabled) {
-        if ([g_netType isEqualToString:@"4G"]) return 4;
-        if ([g_netType isEqualToString:@"LTE"]) return 5;
-        return 6; // 5G
+        if ([g_netType isEqualToString:@"4G"]) return 6;
+        if ([g_netType isEqualToString:@"LTE"]) return 7;
+        return 11; // 5G
     }
     return %orig;
 }
 
+- (unsigned long long)serviceState {
+    return g_enabled ? 2 : %orig;
+}
+
 - (unsigned long long)cellularServiceState {
-    return g_enabled ? 3 : %orig;
+    return g_enabled ? 2 : %orig;
+}
+
+- (NSString *)serviceDescription {
+    if (g_enabled) {
+        NSString *orig = %orig;
+        if (orig && orig.length > 0) return orig;
+        return @"Viettel";
+    }
+    return %orig;
+}
+
+- (NSString *)secondaryServiceDescription {
+    if (g_enabled) {
+        NSString *orig = %orig;
+        if (orig && orig.length > 0) return orig;
+        return @"Viettel";
+    }
+    return %orig;
 }
 
 - (BOOL)isProvidingDataConnection {
@@ -342,6 +350,10 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
 
 - (BOOL)isPreferredForDataConnections {
     return g_enabled ? YES : %orig;
+}
+
+- (BOOL)isRegisteredWithoutCellular {
+    return g_enabled ? NO : %orig;
 }
 %end
 %end
@@ -355,9 +367,9 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
 
 - (int)dataConnectionType {
     if (g_enabled) {
-        if ([g_netType isEqualToString:@"4G"]) return 4;
-        if ([g_netType isEqualToString:@"LTE"]) return 5;
-        return 6; // 5G
+        if ([g_netType isEqualToString:@"4G"]) return 6;
+        if ([g_netType isEqualToString:@"LTE"]) return 7;
+        return 11; // 5G
     }
     return %orig;
 }
@@ -368,6 +380,32 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
 
 - (BOOL)hasCellularTelephony {
     return g_enabled ? YES : %orig;
+}
+
+- (id)operatorName {
+    if (g_enabled) {
+        return @"Viettel";
+    }
+    return %orig;
+}
+%end
+%end
+
+// ── Aggregator Group: Prevent iOS from resetting fake status ─────────────────
+%group AggregatorGroup
+%hook SBStatusBarStateAggregator
+- (void)_updateDataNetworkItem {
+    if (g_enabled) {
+        return; // Suppress original from overwriting our fake network type
+    }
+    %orig;
+}
+
+- (void)_updateServiceItem {
+    if (g_enabled) {
+        return; // Suppress original from marking "No SIM" / "Searching"
+    }
+    %orig;
 }
 %end
 %end
@@ -384,6 +422,9 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
     dlopen("/System/Library/PrivateFrameworks/SystemStatusServer.framework/SystemStatusServer", RTLD_NOW);
     
     Class simInfoCls = objc_getClass("STTelephonyStatusDomainSIMInfo");
+    if (!simInfoCls) {
+        simInfoCls = NSClassFromString(@"STTelephonyStatusDomainSIMInfo");
+    }
     if (simInfoCls) {
         %init(iOS17_SystemStatus, STTelephonyStatusDomainSIMInfo = simInfoCls);
     }
@@ -393,8 +434,14 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
     if (teleCls) {
         %init(TelephonyManagerGroup, SBTelephonyManager = teleCls);
     }
+
+    // 4. Initialize SBStatusBarStateAggregator group
+    Class aggCls = objc_getClass("SBStatusBarStateAggregator");
+    if (aggCls) {
+        %init(AggregatorGroup, SBStatusBarStateAggregator = aggCls);
+    }
     
-    // 4. Register Darwin notification listener
+    // 5. Register Darwin notification listener
     CFNotificationCenterAddObserver(
         CFNotificationCenterGetDarwinNotifyCenter(),
         NULL,
