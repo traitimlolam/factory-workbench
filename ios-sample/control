@@ -1,6 +1,6 @@
 Package: vn.nguyentronghieu.fakecellular5g
 Name: FakeCellular5G
-Version: 1.2.0
+Version: 1.3.0
 Architecture: iphoneos-arm64
 Description: Force 4 bars + 4G/LTE/5G label, override real SIM and no-SIM cellular status. Settings menu to switch type.
 Maintainer: Nguyễn Trọng Hiếu

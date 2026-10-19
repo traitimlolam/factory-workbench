@@ -2,6 +2,8 @@
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <notify.h>
+#import <dlfcn.h>
+#import <objc/runtime.h>
 #import "FactoryConfig.h"
 #import "FactoryLicenseGate.h"
 
@@ -37,6 +39,21 @@
 
 @interface _UIStatusBarDataAggregator : NSObject
 - (_UIStatusBarData *)_currentData;
+@end
+
+@interface STTelephonyStatusDomainSIMInfo : NSObject
+@end
+
+@interface SBTelephonyManager : NSObject
++ (id)sharedTelephonyManager;
+- (void)_updateState;
+@end
+
+@interface SBStatusBarStateAggregator : NSObject
++ (id)sharedInstance;
+- (void)_updateServiceItem;
+- (void)_updateDataNetworkItem;
+- (void)_updateSignalStrengthItem;
 @end
 
 // ── Globals ──────────────────────────────────────────────────────────────────
@@ -95,6 +112,27 @@ static void reloadPrefs(void) {
     }
 }
 
+static void triggerStatusBarRefresh(void) {
+    Class aggCls = objc_getClass("SBStatusBarStateAggregator");
+    if (aggCls && [aggCls respondsToSelector:@selector(sharedInstance)]) {
+        id agg = [aggCls sharedInstance];
+        if ([agg respondsToSelector:@selector(_updateSignalStrengthItem)]) {
+            [agg _updateSignalStrengthItem];
+        }
+        if ([agg respondsToSelector:@selector(_updateDataNetworkItem)]) {
+            [agg _updateDataNetworkItem];
+        }
+        if ([agg respondsToSelector:@selector(_updateServiceItem)]) {
+            [agg _updateServiceItem];
+        }
+    }
+}
+
+static void onSettingsChanged(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+    reloadPrefs();
+    triggerStatusBarRefresh();
+}
+
 // ── Core hook logic ────────────────────────────────────────────────────────────
 static void applyEntry(_UIStatusBarDataCellularEntry *entry) {
     if (!entry) return;
@@ -142,7 +180,6 @@ static void applyFake(_UIStatusBarData *data) {
 // ── StringView Override Helper ────────────────────────────────────────────────
 static inline BOOL isCellularNetworkIndicator(NSString *text) {
     if (!text || text.length == 0 || text.length > 12) return NO;
-    // Fast rejects: clock strings have ':', battery strings have '%'
     if ([text containsString:@":"] || [text containsString:@"%"]) return NO;
 
     NSString *t = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -170,7 +207,7 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
             [u isEqualToString:@"NO SIM"]);
 }
 
-// ── Hooks ────────────────────────────────────────────────────────────────────
+// ── Default Group: UIKit & Modern Status Bar ─────────────────────────────────
 %hook _UIStatusBarData
 - (id)copyWithZone:(struct _NSZone *)z {
     _UIStatusBarData *copy = %orig;
@@ -279,15 +316,89 @@ static inline BOOL isCellularNetworkIndicator(NSString *text) {
 }
 %end
 
+// ── iOS 16 & 17 Core Group: SystemStatus.framework (STTelephonyStatusDomainSIMInfo) ──
+%group iOS17_SystemStatus
+%hook STTelephonyStatusDomainSIMInfo
+- (unsigned long long)signalStrengthBars {
+    return g_enabled ? 4 : %orig;
+}
+
+- (unsigned long long)dataNetworkType {
+    if (g_enabled) {
+        if ([g_netType isEqualToString:@"4G"]) return 4;
+        if ([g_netType isEqualToString:@"LTE"]) return 5;
+        return 6; // 5G
+    }
+    return %orig;
+}
+
+- (unsigned long long)cellularServiceState {
+    return g_enabled ? 3 : %orig;
+}
+
+- (BOOL)isProvidingDataConnection {
+    return g_enabled ? YES : %orig;
+}
+
+- (BOOL)isPreferredForDataConnections {
+    return g_enabled ? YES : %orig;
+}
+%end
+%end
+
+// ── Telephony Manager Group ──────────────────────────────────────────────────
+%group TelephonyManagerGroup
+%hook SBTelephonyManager
+- (int)signalStrengthBars {
+    return g_enabled ? 4 : %orig;
+}
+
+- (int)dataConnectionType {
+    if (g_enabled) {
+        if ([g_netType isEqualToString:@"4G"]) return 4;
+        if ([g_netType isEqualToString:@"LTE"]) return 5;
+        return 6; // 5G
+    }
+    return %orig;
+}
+
+- (BOOL)hasCellularData {
+    return g_enabled ? YES : %orig;
+}
+
+- (BOOL)hasCellularTelephony {
+    return g_enabled ? YES : %orig;
+}
+%end
+%end
+
 // ── Constructor ───────────────────────────────────────────────────────────────
 %ctor {
-    %init;
     reloadPrefs();
     
+    // 1. Initialize default UIKit hooks
+    %init;
+    
+    // 2. Load SystemStatus private frameworks and initialize group
+    dlopen("/System/Library/PrivateFrameworks/SystemStatus.framework/SystemStatus", RTLD_NOW);
+    dlopen("/System/Library/PrivateFrameworks/SystemStatusServer.framework/SystemStatusServer", RTLD_NOW);
+    
+    Class simInfoCls = objc_getClass("STTelephonyStatusDomainSIMInfo");
+    if (simInfoCls) {
+        %init(iOS17_SystemStatus, STTelephonyStatusDomainSIMInfo = simInfoCls);
+    }
+    
+    // 3. Initialize SBTelephonyManager group
+    Class teleCls = objc_getClass("SBTelephonyManager");
+    if (teleCls) {
+        %init(TelephonyManagerGroup, SBTelephonyManager = teleCls);
+    }
+    
+    // 4. Register Darwin notification listener
     CFNotificationCenterAddObserver(
         CFNotificationCenterGetDarwinNotifyCenter(),
         NULL,
-        (CFNotificationCallback)reloadPrefs,
+        (CFNotificationCallback)onSettingsChanged,
         CFSTR("vn.nguyentronghieu.fakecellular5g/settingsChanged"),
         NULL,
         CFNotificationSuspensionBehaviorDeliverImmediately
