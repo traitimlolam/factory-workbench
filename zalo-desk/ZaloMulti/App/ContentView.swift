@@ -37,9 +37,7 @@ struct ContentView: View {
                     .ignoresSafeArea()
                 
                 if isShowingAddClone {
-                    AddCloneView(onDismiss: {
-                        isShowingAddClone = false
-                    })
+                    AddCloneView()
                     .transition(.opacity)
                 } else {
                     switch activeTab {
@@ -370,27 +368,3 @@ struct FeatureRow: View {
     }
 }
 
-// MARK: - Settings View
-struct SettingsView: View {
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("Cài đặt Zalo Desk")
-                .font(.title2)
-                .fontWeight(.bold)
-                .padding(.top, 30)
-            
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Phiên bản: 2.3.0 (Bản quyền Nguyễn Trọng Hiếu)")
-                Text("Cơ chế: Native macOS Multi-Instance Orchestration")
-                Text("Bảo mật: Phân tách phân vùng dữ liệu độc lập")
-            }
-            .font(.system(size: 13))
-            .foregroundColor(.secondary)
-            .padding()
-            .background(RoundedRectangle(cornerRadius: 10).fill(Color(NSColor.controlBackgroundColor)))
-            
-            Spacer()
-        }
-        .padding()
-    }
-}

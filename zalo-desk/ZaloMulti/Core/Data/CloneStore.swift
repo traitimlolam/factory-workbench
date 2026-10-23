@@ -242,4 +242,31 @@ class CloneStore: ObservableObject {
         }
     }
     
-
+    /// Startup sync — dùng kill(pid,0) cho PID đã biết, pgrep chỉ cho orphan recovery
+    private func syncProcessStatus() {
+        DiagnosticLogger.info("STORE", "Sync process status cho \(clones.count) clones...")
+        var changed = 0
+        
+        for i in clones.indices {
+            if let pid = clones[i].processID, ProcessManager.isRunning(pid: pid) {
+                clones[i].status = .running
+            } else {
+                let orphanAlive = ProcessManager.checkCloneRunning(
+                    cloneIndex: clones[i].cloneIndex, knownPID: nil
+                )
+                if orphanAlive {
+                    clones[i].status = .running
+                    DiagnosticLogger.info("STORE", "  '\(clones[i].name)' → running (orphan recovered)")
+                } else {
+                    if clones[i].status == .running { changed += 1 }
+                    clones[i].status = .stopped
+                    clones[i].processID = nil
+                }
+            }
+        }
+        
+        if changed > 0 {
+            saveClones()
+        }
+    }
+}
