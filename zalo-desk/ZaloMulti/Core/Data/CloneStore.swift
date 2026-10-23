@@ -107,14 +107,11 @@ class CloneStore: ObservableObject {
     // MARK: - Launch / Stop
     
     func focusClone(_ clone: CloneAccount) {
-        if clone.status == .running, let pid = clone.processID {
-            ProcessManager.focusClone(pid: pid)
-        } else {
-            launchClone(clone)
-            if let updated = clones.first(where: { $0.id == clone.id }), let pid = updated.processID {
-                ProcessManager.focusClone(pid: pid)
-            }
-        }
+        ProcessManager.switchToClone(clone, store: self)
+    }
+    
+    func focusDefaultZalo() {
+        ProcessManager.switchToDefaultZalo()
     }
     
     func launchClone(_ clone: CloneAccount) {

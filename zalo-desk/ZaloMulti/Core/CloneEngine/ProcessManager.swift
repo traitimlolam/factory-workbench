@@ -223,18 +223,10 @@ final class ProcessManager: ObservableObject {
         return false
     }
 
+    // MARK: - Single-Active Seamless Switcher
+    
     static func focusDefaultZalo() {
-        // 1. Nếu Zalo PC đang chạy, đưa cửa sổ lên mặt trước trực tiếp trên Main Thread
-        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: "com.vng.zalo").first {
-            app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
-            return
-        }
-        
-        // 2. Nếu chưa chạy, mở app và không truyền completionHandler để tránh crash do background queue của LaunchServices
-        let url = URL(fileURLWithPath: "/Applications/Zalo.app")
-        let config = NSWorkspace.OpenConfiguration()
-        config.activates = true
-        NSWorkspace.shared.openApplication(at: url, configuration: config, completionHandler: nil)
+        switchToDefaultZalo()
     }
 
     static func focusClone(pid: Int32, bundleID: String? = nil) {
@@ -245,6 +237,155 @@ final class ProcessManager: ObservableObject {
         if let bundleID = bundleID, let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
             app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
             return
+        }
+    }
+    
+    static func switchToDefaultZalo() {
+        DiagnosticLogger.info("SWITCH", "🔄 Đang chuyển sang Zalo Chính...")
+        
+        let script = """
+        tell application "System Events"
+            set targetPos to missing value
+            set targetSize to missing value
+            
+            -- Lấy vị trí cửa sổ đang hiển thị để giữ nguyên khung hình
+            repeat with p in (every process)
+                try
+                    set pName to name of p
+                    if (pName contains "Zalo.orig" or pName contains "ZaloClone") and (visible of p is true) then
+                        if (count of windows of p) > 0 then
+                            set targetPos to position of first window of p
+                            set targetSize to size of first window of p
+                            exit repeat
+                        end if
+                    end if
+                end try
+            end repeat
+            
+            -- Ẩn tất cả clone
+            repeat with p in (every process)
+                try
+                    set pName to name of p
+                    if pName contains "Zalo.orig" or pName contains "ZaloClone" then
+                        set visible of p to false
+                    end if
+                end try
+            end repeat
+            
+            -- Hiện Zalo mặc định
+            repeat with p in (every process whose name is "Zalo")
+                try
+                    set visible of p to true
+                    set frontmost of p to true
+                    if targetPos is not missing value and targetSize is not missing value then
+                        set position of first window of p to targetPos
+                        set size of first window of p to targetSize
+                    end if
+                end try
+            end repeat
+        end tell
+        """
+        runAppleScript(script)
+        
+        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: "com.vng.zalo").first {
+            app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+        } else {
+            let url = URL(fileURLWithPath: "/Applications/Zalo.app")
+            let config = NSWorkspace.OpenConfiguration()
+            config.activates = true
+            NSWorkspace.shared.openApplication(at: url, configuration: config, completionHandler: nil)
+        }
+    }
+    
+    static func switchToClone(_ targetClone: CloneAccount, store: CloneStore) {
+        DiagnosticLogger.info("SWITCH", "🔄 Đang chuyển sang Clone '\(targetClone.name)' (index=\(targetClone.cloneIndex))...")
+        
+        let targetPID: Int32
+        if let existingPID = targetClone.processID, isRunning(pid: existingPID) {
+            targetPID = existingPID
+        } else {
+            store.launchClone(targetClone)
+            if let updated = store.clones.first(where: { $0.id == targetClone.id }), let newPID = updated.processID {
+                targetPID = newPID
+            } else {
+                DiagnosticLogger.error("SWITCH", "Không thể lấy PID của clone \(targetClone.name)")
+                return
+            }
+        }
+        
+        let script = """
+        tell application "System Events"
+            set targetPos to missing value
+            set targetSize to missing value
+            
+            -- Lấy vị trí cửa sổ đang hiển thị
+            repeat with p in (every process)
+                try
+                    set pName to name of p
+                    if (pName is "Zalo" or pName contains "Zalo.orig" or pName contains "ZaloClone") and (visible of p is true) then
+                        if (count of windows of p) > 0 then
+                            set targetPos to position of first window of p
+                            set targetSize to size of first window of p
+                            exit repeat
+                        end if
+                    end if
+                end try
+            end repeat
+            
+            -- Ẩn Zalo mặc định
+            repeat with p in (every process whose name is "Zalo")
+                try
+                    set visible of p to false
+                end try
+            end repeat
+            
+            -- Ẩn các clone khác
+            repeat with p in (every process)
+                try
+                    set pName to name of p
+                    if (pName contains "Zalo.orig" or pName contains "ZaloClone") and unix id of p is not \(targetPID) then
+                        set visible of p to false
+                    end if
+                end try
+            end repeat
+            
+            -- Hiện và focus clone mục tiêu
+            repeat with p in (every process)
+                try
+                    if unix id of p is \(targetPID) then
+                        set visible of p to true
+                        set frontmost of p to true
+                        if targetPos is not missing value and targetSize is not missing value then
+                            set position of first window of p to targetPos
+                            set size of first window of p to targetSize
+                        end if
+                    end if
+                end try
+            end repeat
+        end tell
+        """
+        runAppleScript(script)
+        
+        if let app = NSRunningApplication(processIdentifier: targetPID) {
+            app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+        } else if let app = NSRunningApplication.runningApplications(withBundleIdentifier: targetClone.bundleID).first {
+            app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+        }
+    }
+    
+    private static func runAppleScript(_ source: String) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            proc.arguments = ["-e", source]
+            proc.standardOutput = FileHandle.nullDevice
+            proc.standardError = FileHandle.nullDevice
+            do {
+                try proc.run()
+                proc.waitUntilExit()
+            } catch {
+                DiagnosticLogger.warning("SWITCH", "osascript error: \(error)")
+            }
         }
     }
 }

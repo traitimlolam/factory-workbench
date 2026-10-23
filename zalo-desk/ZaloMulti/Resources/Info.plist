@@ -47,5 +47,7 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Zalo Desk chuyển đổi giao diện giữa các tài khoản Zalo.</string>
 </dict>
 </plist>

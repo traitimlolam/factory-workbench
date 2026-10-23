@@ -77,10 +77,14 @@ struct ZaloMultiApp: App {
                         SheetPresenter.presentAddClone(store: CloneStore.shared)
                     } else if host == "launch" {
                         if let indexStr = components?.queryItems?.first(where: { $0.name == "index" })?.value,
-                           let index = Int(indexStr),
-                           let clone = CloneStore.shared.clones.first(where: { $0.cloneIndex == index }) {
-                            DiagnosticLogger.info("URL", "Launch clone index=\(index)")
-                            CloneStore.shared.focusClone(clone)
+                           let index = Int(indexStr) {
+                            if index == 0 {
+                                DiagnosticLogger.info("URL", "Launch default Zalo")
+                                CloneStore.shared.focusDefaultZalo()
+                            } else if let clone = CloneStore.shared.clones.first(where: { $0.cloneIndex == index }) {
+                                DiagnosticLogger.info("URL", "Launch clone index=\(index)")
+                                CloneStore.shared.focusClone(clone)
+                            }
                         }
                     }
                 }

@@ -15,6 +15,7 @@ struct ContentView: View {
     // nil = Nick Zalo Chính (Mặc định)
     @State private var selectedClone: CloneAccount? = nil
     @State private var activeTab: SidebarTab = .chat
+    @AppStorage("isCompactDock") private var isCompactDock: Bool = false
     
     enum SidebarTab {
         case chat
@@ -27,31 +28,47 @@ struct ContentView: View {
             // LEFT RAIL SIDEBAR (Zalo Blue #0068FF)
             ZaloRailSidebar(
                 selectedClone: $selectedClone,
-                activeTab: $activeTab
+                activeTab: $activeTab,
+                isCompactDock: $isCompactDock
             )
             .frame(width: 68)
             .background(Color(red: 0.0, green: 0.41, blue: 1.0))
             
             // MAIN CONTENT AREA
-            ZStack {
-                Color(NSColor.windowBackgroundColor)
-                    .ignoresSafeArea()
-                
-                switch activeTab {
-                case .chat, .clones:
-                    AccountDetailView(
-                        clone: selectedClone,
-                        onOpenAddClone: {
-                            SheetPresenter.presentAddClone(store: store)
-                        }
-                    )
-                case .settings:
-                    SettingsView()
+            if !isCompactDock {
+                ZStack {
+                    Color(NSColor.windowBackgroundColor)
+                        .ignoresSafeArea()
+                    
+                    switch activeTab {
+                    case .chat, .clones:
+                        AccountDetailView(
+                            clone: selectedClone,
+                            onOpenAddClone: {
+                                SheetPresenter.presentAddClone(store: store)
+                            }
+                        )
+                    case .settings:
+                        SettingsView()
+                    }
                 }
+                .frame(minWidth: 500, minHeight: 560)
             }
-            .frame(minWidth: 700, minHeight: 560)
         }
-        .frame(minWidth: 768, minHeight: 560)
+        .frame(minWidth: isCompactDock ? 68 : 768, maxWidth: isCompactDock ? 68 : .infinity, minHeight: 560)
+        .onChange(of: isCompactDock) { compact in
+            if let window = NSApp.keyWindow ?? NSApp.windows.first {
+                var frame = window.frame
+                if compact {
+                    frame.size.width = 68
+                    window.level = .floating
+                } else {
+                    frame.size.width = 768
+                    window.level = .normal
+                }
+                window.setFrame(frame, display: true, animate: true)
+            }
+        }
         .onReceive(store.$showAddCloneSheet) { show in
             if show {
                 store.showAddCloneSheet = false
@@ -73,6 +90,7 @@ struct ZaloRailSidebar: View {
     
     @Binding var selectedClone: CloneAccount?
     @Binding var activeTab: ContentView.SidebarTab
+    @Binding var isCompactDock: Bool
     
     var body: some View {
         VStack(spacing: 16) {
@@ -95,7 +113,7 @@ struct ZaloRailSidebar: View {
             // AVATAR STACK
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 12) {
-                    // 1. Nick Zalo Chính
+                    // 1. Nick Zalo Chính (Chuyển đổi tức thì)
                     RailAvatarItem(
                         title: "Nick Chính",
                         initials: "Z",
@@ -107,9 +125,10 @@ struct ZaloRailSidebar: View {
                     ) {
                         selectedClone = nil
                         activeTab = .chat
+                        store.focusDefaultZalo()
                     }
                     
-                    // 2. Danh sách Clone Accounts
+                    // 2. Danh sách Clone Accounts (Chuyển đổi tức thì)
                     ForEach(store.clones) { clone in
                         RailAvatarItem(
                             title: clone.name,
@@ -122,6 +141,7 @@ struct ZaloRailSidebar: View {
                         ) {
                             selectedClone = clone
                             activeTab = .chat
+                            store.focusClone(clone)
                         }
                     }
                     
@@ -153,11 +173,24 @@ struct ZaloRailSidebar: View {
             // BOTTOM UTILITY ICONS
             VStack(spacing: 14) {
                 RailIconButton(
+                    icon: isCompactDock ? "sidebar.right" : "sidebar.left",
+                    label: isCompactDock ? "Mở rộng giao diện" : "Ghim Dock nổi bên trái",
+                    isActive: isCompactDock
+                ) {
+                    isCompactDock.toggle()
+                }
+                
+                RailIconButton(
                     icon: "message.fill",
                     label: "Tin nhắn",
                     isActive: activeTab == .chat
                 ) {
                     activeTab = .chat
+                    if selectedClone == nil {
+                        store.focusDefaultZalo()
+                    } else if let c = selectedClone {
+                        store.focusClone(c)
+                    }
                 }
                 
                 RailIconButton(
@@ -165,6 +198,7 @@ struct ZaloRailSidebar: View {
                     label: "Tài khoản",
                     isActive: activeTab == .clones
                 ) {
+                    if isCompactDock { isCompactDock = false }
                     activeTab = .clones
                 }
                 
@@ -173,6 +207,7 @@ struct ZaloRailSidebar: View {
                     label: "Cài đặt",
                     isActive: activeTab == .settings
                 ) {
+                    if isCompactDock { isCompactDock = false }
                     activeTab = .settings
                 }
             }
