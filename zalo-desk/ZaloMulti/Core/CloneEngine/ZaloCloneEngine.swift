@@ -203,8 +203,11 @@ final class ZaloCloneEngine: ObservableObject {
         
         let script = """
         #!/bin/bash
+        DIR="$(cd "$(dirname "$0")" && pwd)"
+        DATA_DIR="\(dataPath)/ZaloData"
+        mkdir -p "$DATA_DIR"
         export HOME="\(dataPath)"
-        exec "$(dirname "$0")/Zalo.orig" "$@"
+        exec "$DIR/Zalo.orig" --user-data-dir="$DATA_DIR" "$@"
         """
         try script.write(toFile: binaryPath, atomically: true, encoding: .utf8)
         
@@ -256,6 +259,11 @@ final class ZaloCloneEngine: ObservableObject {
         
         data = binaryReplace(in: data, find: sendOld, replace: sendNew)
         data = binaryReplace(in: data, find: recvOld, replace: recvNew)
+        
+        // Single Instance Lock Bypass — Cho phép chạy đồng thời nhiều profile độc lập
+        let singleLockOld = "require('electron').app.requestSingleInstanceLock()"
+        let singleLockNew = "true /*" + String(repeating: " ", count: singleLockOld.count - 9) + "*/"
+        data = binaryReplace(in: data, find: singleLockOld, replace: singleLockNew)
         
         try data.write(to: URL(fileURLWithPath: asarPath))
     }
