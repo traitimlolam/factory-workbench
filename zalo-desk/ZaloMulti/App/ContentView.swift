@@ -171,7 +171,7 @@ struct ZaloRailSidebar: View {
     
     private func getUnreadCount(_ clone: CloneAccount) -> Int {
         // Count unread notifications matching this clone
-        notifMonitor.notifications.filter { !$0.isRead && $0.cloneIndex == clone.cloneIndex }.count
+        notifMonitor.notifications.filter { !$0.isRead && ($0.cloneId == clone.id || $0.cloneName == clone.name) }.count
     }
 }
 
@@ -222,7 +222,7 @@ struct AvatarRailButton: View {
                     ZStack {
                         Capsule()
                             .fill(Color.red)
-                            .frame(minWidth: 16, height: 16)
+                            .frame(minWidth: 16, minHeight: 16, maxHeight: 16)
                         Text(unreadCount > 99 ? "99+" : "\(unreadCount)")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(.white)
@@ -415,7 +415,7 @@ struct AddAccountInlineView: View {
             }) {
                 Text(isCreating ? "Đang tạo tài khoản..." : "Tạo & Mở Quét Mã QR")
                     .fontWeight(.semibold)
-                    .frame(minWidth: 200, height: 36)
+                    .frame(minWidth: 200, minHeight: 36, maxHeight: 36)
             }
             .buttonStyle(.borderedProminent)
             .tint(Color(red: 0.0, green: 0.41, blue: 1.0))
