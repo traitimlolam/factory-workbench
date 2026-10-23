@@ -18,6 +18,7 @@ struct AddCloneView: View {
         }
     }
     
+    @FocusState private var isNameFocused: Bool
     @State private var name = ""
     @State private var phoneNumber = ""
     @State private var isCreating = false
@@ -43,10 +44,22 @@ struct AddCloneView: View {
                     // Thông tin tài khoản
                     GroupBox("Thông tin tài khoản") {
                         VStack(alignment: .leading, spacing: 12) {
-                            LabeledField("Tên hiển thị", text: $name,
-                                         placeholder: "VD: Business, Shop Online...")
-                            LabeledField("Số điện thoại", text: $phoneNumber,
-                                         placeholder: "0901234567")
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Tên hiển thị")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                TextField("VD: Business, Shop Online...", text: $name)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($isNameFocused)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Số điện thoại")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                TextField("0901234567", text: $phoneNumber)
+                                    .textFieldStyle(.roundedBorder)
+                            }
                             
                             // Progress bar ngay dưới SĐT (#3)
                             if isCreating {
@@ -113,6 +126,11 @@ struct AddCloneView: View {
             .padding()
         }
         .frame(width: 460, height: 340)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isNameFocused = true
+            }
+        }
     }
     
     private var progressStep: String {
@@ -144,7 +162,7 @@ struct AddCloneView: View {
     }
     
     private func createClone() {
-        // Reset message TRƯỚC khi show progress UI → tránh hiện "Hoàn thành!" cũ
+        DiagnosticLogger.info("CREATE", "Bắt đầu tạo clone name='\(name)', phone='\(phoneNumber)'")
         store.engine.progressMessage = "Đang chuẩn bị..."
         withAnimation { isCreating = true }
         
