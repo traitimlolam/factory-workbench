@@ -248,7 +248,7 @@ class CloneStore: ObservableObject {
                     if let index = Int(indexStr) {
                         let profile = AvatarExtractor.extractProfile(cloneIndex: index)
                         let name = profile?.displayName ?? "Zalo Clone \(index)"
-                        let phone = profile?.phoneNumber ?? ""
+                        let phone = ""
                         let recovered = CloneAccount(
                             id: UUID(),
                             name: name,
