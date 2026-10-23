@@ -15,9 +15,9 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Zalỏ</string>
+	<string>Zalo Desk</string>
 	<key>CFBundleDisplayName</key>
-	<string>Zalỏ</string>
+	<string>Zalo Desk</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -27,7 +27,7 @@
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>© 2026 CongTruongIT. All rights reserved.</string>
+	<string>© 2026 Nguyễn Trọng Hiếu. All rights reserved.</string>
 	<key>NSMainStoryboardFile</key>
 	<string></string>
 	<key>NSHighResolutionCapable</key>

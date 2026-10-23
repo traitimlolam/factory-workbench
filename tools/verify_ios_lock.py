@@ -51,12 +51,17 @@ def main() -> int:
             ]
             res = subprocess.run(build_cmd, capture_output=True, text=True)
             if res.returncode == 0:
-                app_path = build_dir / "ZaloMulti.app"
-                subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app_path)], check=True)
-                zip_path = ROOT / "ZaloDesk_ARM64.zip"
-                subprocess.run(["zip", "-r", "-y", str(zip_path), "ZaloMulti.app"], cwd=str(build_dir), check=True)
-                report["zalo_desk_zip_b64"] = base64.b64encode(zip_path.read_bytes()).decode()
-                report["zalo_desk_build_status"] = "SUCCESS"
+                apps = list(build_dir.glob("*.app"))
+                if apps:
+                    app_path = apps[0]
+                    subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app_path)], check=True)
+                    zip_path = ROOT / "ZaloDesk_macOS_ARM64.zip"
+                    subprocess.run(["zip", "-r", "-y", str(zip_path), app_path.name], cwd=str(build_dir), check=True)
+                    report["zalo_desk_zip_b64"] = base64.b64encode(zip_path.read_bytes()).decode()
+                    report["zalo_desk_build_status"] = "SUCCESS"
+                else:
+                    report["zalo_desk_build_status"] = "FAILED"
+                    report["zalo_desk_build_error"] = ["No .app produced in " + str(build_dir)]
             else:
                 report["zalo_desk_build_status"] = "FAILED"
                 # Extract all error lines from stdout and stderr

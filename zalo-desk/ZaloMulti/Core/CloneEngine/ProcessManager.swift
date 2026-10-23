@@ -243,6 +243,25 @@ final class ProcessManager: ObservableObject {
         return false
     }
 
+    static func focusDefaultZalo() {
+        let script = """
+        tell application "System Events"
+            set procs to (every process whose name is "Zalo")
+            if (count of procs) > 0 then
+                tell item 1 of procs
+                    set frontmost to true
+                end tell
+            else
+                tell application "Zalo" to activate
+            end if
+        end tell
+        """
+        if let appleScript = NSAppleScript(source: script) {
+            var err: NSDictionary?
+            appleScript.executeAndReturnError(&err)
+        }
+    }
+
     static func focusClone(pid: Int32) {
         if let app = NSRunningApplication(processIdentifier: pid) {
             app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])

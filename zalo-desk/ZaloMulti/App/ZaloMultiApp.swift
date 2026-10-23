@@ -15,7 +15,7 @@ struct ZaloMultiApp: App {
         AntiTamper.initialize()
         
         // Logger init
-        DiagnosticLogger.info("APP", "ZaloMulti — khởi động")
+        DiagnosticLogger.info("APP", "Zalo Desk — khởi động")
         DiagnosticLogger.info("APP", "Log file: \(DiagnosticLogger.logFilePath)")
         
         // Pre-init singletons
@@ -26,7 +26,7 @@ struct ZaloMultiApp: App {
         DiagnosticLogger.info("APP", "Zalo Desktop: installed=\(zaloInfo.installed), version=\(zaloInfo.version ?? "N/A")")
     }
     var body: some Scene {
-        WindowGroup("Zalỏ - macOS") {
+        WindowGroup("Zalo Desk") {
             ContentView()
                 .frame(minWidth: 860, minHeight: 560)
                 .onAppear {
