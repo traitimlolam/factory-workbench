@@ -410,7 +410,9 @@ final class SheetPresenter: NSObject {
     private var activeModalWindow: NSWindow?
     
     static func presentAddClone(store: CloneStore) {
+        DiagnosticLogger.info("UI", "SheetPresenter.presentAddClone được kích hoạt!")
         if let existing = shared.activeModalWindow, existing.isVisible {
+            DiagnosticLogger.info("UI", "Cửa sổ AddClone đã tồn tại -> Focus lên frontmost")
             existing.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
@@ -434,6 +436,7 @@ final class SheetPresenter: NSObject {
         shared.activeModalWindow = window
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        DiagnosticLogger.success("UI", "✅ Đã hiển thị cửa sổ AddClone thành công!")
     }
     
     static func dismissCurrent() {

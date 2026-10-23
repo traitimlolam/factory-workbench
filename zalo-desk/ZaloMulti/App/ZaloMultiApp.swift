@@ -68,7 +68,8 @@ struct ZaloMultiApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Thêm Clone Mới") {
-                    CloneStore.shared.showAddCloneSheet = true
+                    DiagnosticLogger.info("UI", "Menu Tệp -> Thêm Clone Mới được chọn")
+                    SheetPresenter.presentAddClone(store: CloneStore.shared)
                 }
                 .keyboardShortcut("n", modifiers: .command)
             }
