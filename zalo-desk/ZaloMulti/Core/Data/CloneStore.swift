@@ -230,11 +230,45 @@ class CloneStore: ObservableObject {
     }
     
     private func loadClones() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey) else { return }
-        do {
-            clones = try JSONDecoder().decode([CloneAccount].self, from: data)
-        } catch {
-            DiagnosticLogger.error("STORE", "loadClones: decode FAILED", error: error)
+        if let data = UserDefaults.standard.data(forKey: storageKey) {
+            do {
+                clones = try JSONDecoder().decode([CloneAccount].self, from: data)
+            } catch {
+                DiagnosticLogger.error("STORE", "loadClones: decode FAILED", error: error)
+            }
+        }
+        
+        // Tự động phục hồi clones từ đĩa nếu storage trống
+        if clones.isEmpty {
+            let basePath = "\(NSHomeDirectory())/Library/Application Support/ZaloMulti/Data"
+            let fm = FileManager.default
+            if let entries = try? fm.contentsOfDirectory(atPath: basePath) {
+                for dir in entries.sorted() where dir.hasPrefix("clone") {
+                    let indexStr = dir.replacingOccurrences(of: "clone", with: "")
+                    if let index = Int(indexStr) {
+                        let profile = AvatarExtractor.extractProfile(cloneIndex: index)
+                        let name = profile?.displayName ?? "Zalo Clone \(index)"
+                        let phone = profile?.phoneNumber ?? ""
+                        let recovered = CloneAccount(
+                            id: UUID(),
+                            name: name,
+                            phoneNumber: phone,
+                            cloneIndex: index,
+                            bundleID: "com.vng.zalo.clone\(index)",
+                            appPath: "/Applications/ZaloClone\(index).app",
+                            dataPath: "\(basePath)/clone\(index)/ZaloData",
+                            status: .stopped,
+                            processID: nil,
+                            avatarColor: CloneAccount.colorForIndex(index)
+                        )
+                        clones.append(recovered)
+                    }
+                }
+                if !clones.isEmpty {
+                    saveClones()
+                    DiagnosticLogger.info("STORE", "Đã tự động phục hồi \(clones.count) clones từ thư mục đĩa")
+                }
+            }
         }
     }
     
