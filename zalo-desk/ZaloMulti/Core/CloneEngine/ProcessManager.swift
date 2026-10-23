@@ -244,19 +244,27 @@ final class ProcessManager: ObservableObject {
     }
 
     static func focusDefaultZalo() {
+        // 1. Nếu Zalo PC đang chạy, đưa cửa sổ lên mặt trước trực tiếp trên Main Thread
+        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: "com.vng.zalo").first {
+            app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+            return
+        }
+        
+        // 2. Nếu chưa chạy, mở app và không truyền completionHandler để tránh crash do background queue của LaunchServices
         let url = URL(fileURLWithPath: "/Applications/Zalo.app")
         let config = NSWorkspace.OpenConfiguration()
         config.activates = true
-        NSWorkspace.shared.openApplication(at: url, configuration: config) { app, error in
-            if let app = app {
-                app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
-            }
-        }
+        NSWorkspace.shared.openApplication(at: url, configuration: config, completionHandler: nil)
     }
 
-    static func focusClone(pid: Int32) {
+    static func focusClone(pid: Int32, bundleID: String? = nil) {
         if let app = NSRunningApplication(processIdentifier: pid) {
             app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+            return
+        }
+        if let bundleID = bundleID, let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
+            app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+            return
         }
     }
 }

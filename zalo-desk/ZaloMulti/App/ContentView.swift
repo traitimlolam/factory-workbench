@@ -36,26 +36,29 @@ struct ContentView: View {
                 Color(NSColor.windowBackgroundColor)
                     .ignoresSafeArea()
                 
-                if isShowingAddClone {
-                    AddCloneView()
-                    .transition(.opacity)
-                } else {
-                    switch activeTab {
-                    case .chat, .clones:
-                        AccountDetailView(
-                            clone: selectedClone,
-                            onOpenAddClone: {
-                                isShowingAddClone = true
-                            }
-                        )
-                    case .settings:
-                        SettingsView()
-                    }
+                switch activeTab {
+                case .chat, .clones:
+                    AccountDetailView(
+                        clone: selectedClone,
+                        onOpenAddClone: {
+                            isShowingAddClone = true
+                        }
+                    )
+                case .settings:
+                    SettingsView()
                 }
             }
             .frame(minWidth: 700, minHeight: 560)
         }
         .frame(minWidth: 768, minHeight: 560)
+        .sheet(isPresented: $isShowingAddClone) {
+            AddCloneView()
+        }
+        .alert("Lỗi", isPresented: $store.showError) {
+            Button("OK") { store.showError = false }
+        } message: {
+            Text(store.errorMessage ?? "Đã xảy ra lỗi không xác định")
+        }
     }
 }
 
@@ -127,6 +130,7 @@ struct ZaloRailSidebar: View {
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(.white)
                         }
+                        .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
                     .help("Thêm tài khoản Zalo mới (+)")
@@ -160,7 +164,7 @@ struct ZaloRailSidebar: View {
                 
                 SidebarIconButton(
                     iconName: "person.2.fill",
-                    label: "Danh sách Nick",
+                    label: "Tài khoản",
                     isActive: activeTab == .clones && !isShowingAddClone,
                     action: {
                         isShowingAddClone = false
@@ -171,12 +175,12 @@ struct ZaloRailSidebar: View {
             
             Spacer()
             
-            // SETTINGS & BRANDING
+            // BOTTOM SETTINGS & BRANDING
             VStack(spacing: 12) {
                 SidebarIconButton(
                     iconName: "gearshape.fill",
                     label: "Cài đặt",
-                    isActive: activeTab == .settings,
+                    isActive: activeTab == .settings && !isShowingAddClone,
                     action: {
                         isShowingAddClone = false
                         activeTab = .settings
@@ -184,15 +188,15 @@ struct ZaloRailSidebar: View {
                 )
                 
                 Text("Zalo Desk")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.6))
-                    .padding(.bottom, 10)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(Color.white.opacity(0.6))
+                    .padding(.bottom, 12)
             }
         }
     }
 }
 
-// MARK: - Account Rail Avatar Component
+// MARK: - Avatar Component on Sidebar Rail
 struct AccountRailAvatar: View {
     let avatarImageName: String
     let title: String
@@ -203,53 +207,51 @@ struct AccountRailAvatar: View {
     
     var body: some View {
         Button(action: action) {
-            ZStack(alignment: .topTrailing) {
-                ZStack(alignment: .bottomTrailing) {
-                    // Profile Image
+            ZStack(alignment: .bottomTrailing) {
+                // Avatar Frame with Selection Ring
+                ZStack {
+                    if isSelected {
+                        Circle()
+                            .stroke(Color.white, lineWidth: 2.5)
+                            .frame(width: 48, height: 48)
+                            .shadow(color: Color.black.opacity(0.25), radius: 3)
+                    }
+                    
                     Image(avatarImageName)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: 44, height: 44)
+                        .frame(width: 42, height: 42)
                         .clipShape(Circle())
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white, lineWidth: isSelected ? 2.5 : 0)
-                        )
-                        .shadow(color: Color.black.opacity(isSelected ? 0.3 : 0), radius: 3)
-                    
-                    // Running Dot Indicator
-                    if isRunning {
-                        Circle()
-                            .fill(Color(red: 0.15, green: 0.85, blue: 0.4))
-                            .frame(width: 11, height: 11)
-                            .overlay(Circle().stroke(Color(red: 0.0, green: 0.41, blue: 1.0), lineWidth: 2))
-                            .offset(x: 2, y: 2)
-                    }
+                }
+                
+                // Status Indicator (Green dot if active)
+                if isRunning {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 11, height: 11)
+                        .overlay(Circle().stroke(Color(red: 0.0, green: 0.41, blue: 1.0), lineWidth: 2))
+                        .offset(x: 2, y: 2)
                 }
                 
                 // Unread Badge
                 if unreadCount > 0 {
-                    ZStack {
-                        Capsule()
-                            .fill(Color.red)
-                            .frame(minWidth: 16, minHeight: 16, maxHeight: 16)
-                        
-                        Text("\(min(unreadCount, 99))")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 4)
-                    }
-                    .offset(x: 6, y: -4)
+                    Text(unreadCount > 99 ? "99+" : "\(unreadCount)")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(Color.red))
+                        .offset(x: 6, y: -28)
                 }
             }
-            .frame(width: 48, height: 48)
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .help(title)
     }
 }
 
-// MARK: - Sidebar Icon Button Component
+// MARK: - Sidebar Icon Navigation Button
 struct SidebarIconButton: View {
     let iconName: String
     let label: String
@@ -261,22 +263,23 @@ struct SidebarIconButton: View {
             ZStack {
                 if isActive {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.18))
-                        .frame(width: 40, height: 40)
+                        .fill(Color.white.opacity(0.2))
+                        .frame(width: 44, height: 44)
                 }
                 
                 Image(systemName: iconName)
-                    .font(.system(size: 18))
-                    .foregroundColor(isActive ? .white : .white.opacity(0.7))
+                    .font(.system(size: 19, weight: isActive ? .bold : .regular))
+                    .foregroundColor(isActive ? .white : Color.white.opacity(0.75))
             }
             .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(label)
     }
 }
 
-// MARK: - Account Detail & Quick Launcher
+// MARK: - Account Detail Dashboard View
 struct AccountDetailView: View {
     let clone: CloneAccount?
     let onOpenAddClone: () -> Void
@@ -308,33 +311,50 @@ struct AccountDetailView: View {
                 
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(Color.green)
+                        .fill(isRunning ? Color.green : Color.gray)
                         .frame(width: 8, height: 8)
-                    Text("Đang hoạt động (Online)")
+                    Text(isRunning ? "Đang hoạt động (Online)" : "Chưa khởi chạy")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                 }
             }
             .padding(.top, 40)
             
-            // Primary Switch Button
-            Button(action: {
-                if let c = clone {
-                    store.focusClone(c)
-                } else {
-                    ProcessManager.focusDefaultZalo()
+            // Action Buttons
+            VStack(spacing: 12) {
+                // Primary Switch Button
+                Button(action: {
+                    if let c = clone {
+                        store.focusClone(c)
+                    } else {
+                        ProcessManager.focusDefaultZalo()
+                    }
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.up.forward.app.fill")
+                            .font(.system(size: 15))
+                        Text("Mở Cửa Sổ Chat (1 Chạm Chuyển Đổi)")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(minWidth: 260, minHeight: 38, maxHeight: 38)
                 }
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.up.forward.app.fill")
-                        .font(.system(size: 15))
-                    Text("Mở Cửa Sổ Chat (1 Chạm Chuyển Đổi)")
-                        .fontWeight(.semibold)
+                .buttonStyle(.borderedProminent)
+                .tint(Color(red: 0.0, green: 0.41, blue: 1.0))
+                
+                // Secondary Add Clone Button
+                Button(action: {
+                    onOpenAddClone()
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 15))
+                        Text("Thêm Tài Khoản Zalo Mới (+)")
+                            .fontWeight(.medium)
+                    }
+                    .frame(minWidth: 260, minHeight: 34, maxHeight: 34)
                 }
-                .frame(minWidth: 260, minHeight: 38, maxHeight: 38)
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Color(red: 0.0, green: 0.41, blue: 1.0))
             
             // Feature Highlights
             VStack(alignment: .leading, spacing: 12) {
@@ -361,10 +381,11 @@ struct FeatureRow: View {
             Image(systemName: icon)
                 .foregroundColor(Color(red: 0.0, green: 0.41, blue: 1.0))
                 .font(.system(size: 16))
+                .frame(width: 22)
             Text(text)
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundColor(.primary)
+            Spacer()
         }
     }
 }
-
