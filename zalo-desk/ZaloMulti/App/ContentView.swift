@@ -405,6 +405,14 @@ struct AccountDetailView: View {
 
 // MARK: - Sheet Presenter (Native AppKit Floating Modal Window)
 final class ModalSheetWindow: NSWindow {
+    override var canBecomeKey: Bool {
+        return true
+    }
+    
+    override var canBecomeMain: Bool {
+        return true
+    }
+    
     override func cancelOperation(_ sender: Any?) {
         self.close()
     }
@@ -442,6 +450,7 @@ final class SheetPresenter: NSObject, NSWindowDelegate {
         
         shared.activeModalWindow = window
         window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(hostingController)
         NSApp.activate(ignoringOtherApps: true)
         DiagnosticLogger.success("UI", "✅ Đã hiển thị cửa sổ AddClone thành công!")
     }
