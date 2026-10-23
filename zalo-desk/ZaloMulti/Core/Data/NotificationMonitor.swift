@@ -106,13 +106,11 @@ final class NotificationMonitor: ObservableObject {
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fd,
             eventMask: [.write, .extend, .rename],
-            queue: DispatchQueue.global(qos: .utility)
+            queue: DispatchQueue.main
         )
         
         source.setEventHandler { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.handleFileChange(cloneIndex: cloneIndex)
-            }
+            self?.handleFileChange(cloneIndex: cloneIndex)
         }
         
         source.setCancelHandler {
