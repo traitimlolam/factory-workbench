@@ -62,6 +62,28 @@ struct ZaloMultiApp: App {
                         }
                     }
                 }
+                .onOpenURL { url in
+                    DiagnosticLogger.info("URL", "Nhận URL: \(url.absoluteString)")
+                    guard url.scheme == "zalodesk" else { return }
+                    let host = url.host ?? ""
+                    let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+                    
+                    if host == "add" || url.path.contains("add") {
+                        let name = components?.queryItems?.first(where: { $0.name == "name" })?.value ?? "Nick Phụ 2"
+                        let phone = components?.queryItems?.first(where: { $0.name == "phone" })?.value ?? ""
+                        DiagnosticLogger.info("URL", "Kích hoạt addClone từ URL: name='\(name)', phone='\(phone)'")
+                        CloneStore.shared.addClone(name: name, phone: phone)
+                    } else if host == "open-add-sheet" {
+                        SheetPresenter.presentAddClone(store: CloneStore.shared)
+                    } else if host == "launch" {
+                        if let indexStr = components?.queryItems?.first(where: { $0.name == "index" })?.value,
+                           let index = Int(indexStr),
+                           let clone = CloneStore.shared.clones.first(where: { $0.cloneIndex == index }) {
+                            DiagnosticLogger.info("URL", "Launch clone index=\(index)")
+                            CloneStore.shared.focusClone(clone)
+                        }
+                    }
+                }
         }
         .windowToolbarStyle(.unified(showsTitle: true))
         .defaultSize(width: 1060, height: 680)

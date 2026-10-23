@@ -36,5 +36,16 @@
 	<false/>
 	<key>NSSupportsSuddenTermination</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.vng.zalomulti.url</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>zalodesk</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
