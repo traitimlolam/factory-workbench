@@ -17,71 +17,51 @@ final class ProcessManager: ObservableObject {
     func launchClone(_ clone: CloneAccount) throws -> Int32 {
         DiagnosticLogger.info("LAUNCH", "Bắt đầu launch clone '\(clone.name)' (index=\(clone.cloneIndex))")
         
-        let binaryPath = "\(clone.appPath)/Contents/MacOS/Zalo"
-        
-        guard FileManager.default.fileExists(atPath: binaryPath) else {
+        let appURL = URL(fileURLWithPath: clone.appPath)
+        guard FileManager.default.fileExists(atPath: clone.appPath) else {
             throw CloneError.zaloNotFound
         }
         
         if let existingPID = runningProcesses[clone.id], Self.isRunning(pid: existingPID) {
-            throw CloneError.alreadyRunning
+            Self.focusClone(pid: existingPID, bundleID: clone.bundleID)
+            return existingPID
         }
         
+        // Đảm bảo các thư mục data biệt lập tồn tại
         let fm = FileManager.default
-        let realHome = NSHomeDirectory()
-        
         let cloneZaloData = "\(clone.dataPath)/ZaloData"
         try? fm.createDirectory(atPath: cloneZaloData, withIntermediateDirectories: true)
+        try? fm.createDirectory(atPath: "\(clone.dataPath)/Library/Application Support", withIntermediateDirectories: true)
         try? fm.createDirectory(atPath: "\(clone.dataPath)/tmp", withIntermediateDirectories: true)
         
-        let defaultZaloData = "\(realHome)/Library/Application Support/ZaloData"
-        let backupZaloData = "\(realHome)/Library/Application Support/ZaloData.original"
+        // Khởi chạy app bundle chuẩn macOS bằng NSWorkspace (kích hoạt wrapper script và export HOME an toàn)
+        let config = NSWorkspace.OpenConfiguration()
+        config.activates = true
+        config.addsToRecentItems = false
         
-        if fm.fileExists(atPath: defaultZaloData) {
-            let attrs = try? fm.attributesOfItem(atPath: defaultZaloData)
-            let isSymlink = attrs?[.type] as? FileAttributeType == .typeSymbolicLink
-            
-            if !isSymlink {
-                try? fm.moveItem(atPath: defaultZaloData, toPath: backupZaloData)
+        var launchedPID: pid_t = 0
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        NSWorkspace.shared.openApplication(at: appURL, configuration: config) { app, error in
+            if let app = app {
+                launchedPID = app.processIdentifier
             }
+            semaphore.signal()
         }
         
-        try? fm.removeItem(atPath: defaultZaloData)
-        try fm.createSymbolicLink(atPath: defaultZaloData, withDestinationPath: cloneZaloData)
+        _ = semaphore.wait(timeout: .now() + 4.0)
         
-        let origBinaryPath = "\(clone.appPath)/Contents/MacOS/Zalo.orig"
-        let actualBinary = fm.fileExists(atPath: origBinaryPath) ? origBinaryPath : binaryPath
-        
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: actualBinary)
-        process.currentDirectoryURL = URL(fileURLWithPath: clone.dataPath)
-        
-        // Session persistence configured
-        
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-        
-        do {
-            try process.run()
-            let pid = process.processIdentifier
-            runningProcesses[clone.id] = pid
-            
-            let cloneId = clone.id
-            
-            process.terminationHandler = { [weak self] proc in
-                Task { @MainActor in
-                    self?.runningProcesses.removeValue(forKey: cloneId)
-                }
+        if launchedPID > 0 {
+            runningProcesses[clone.id] = launchedPID
+            DiagnosticLogger.success("LAUNCH", "✅ Đã launch clone '\(clone.name)' với PID=\(launchedPID)")
+            return launchedPID
+        } else {
+            // Fallback: dò qua bundleID
+            if let running = NSRunningApplication.runningApplications(withBundleIdentifier: clone.bundleID).first {
+                runningProcesses[clone.id] = running.processIdentifier
+                return running.processIdentifier
             }
-            
-            
-            return pid
-        } catch {
-            try? fm.removeItem(atPath: defaultZaloData)
-            if fm.fileExists(atPath: backupZaloData) {
-                try? fm.createSymbolicLink(atPath: defaultZaloData, withDestinationPath: backupZaloData)
-            }
-            throw CloneError.launchFailed(error.localizedDescription)
+            throw CloneError.launchFailed("Không thể khởi chạy ứng dụng clone")
         }
     }
     

@@ -107,8 +107,8 @@ struct AddCloneView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
                 .disabled(name.isEmpty || isCreating)
-                .keyboardShortcut(.return)
             }
             .padding()
         }
