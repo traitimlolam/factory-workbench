@@ -244,42 +244,19 @@ final class ProcessManager: ObservableObject {
     }
 
     static func focusDefaultZalo() {
-        let script = """
-        tell application "System Events"
-            set procs to (every process whose name is "Zalo")
-            if (count of procs) > 0 then
-                tell item 1 of procs
-                    set frontmost to true
-                end tell
-            else
-                tell application "Zalo" to activate
-            end if
-        end tell
-        """
-        if let appleScript = NSAppleScript(source: script) {
-            var err: NSDictionary?
-            appleScript.executeAndReturnError(&err)
+        let url = URL(fileURLWithPath: "/Applications/Zalo.app")
+        let config = NSWorkspace.OpenConfiguration()
+        config.activates = true
+        NSWorkspace.shared.openApplication(at: url, configuration: config) { app, error in
+            if let app = app {
+                app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+            }
         }
     }
 
     static func focusClone(pid: Int32) {
         if let app = NSRunningApplication(processIdentifier: pid) {
             app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
-        }
-        
-        let script = """
-        tell application "System Events"
-            set procs to (every process whose unix id is \(pid))
-            if (count of procs) > 0 then
-                tell item 1 of procs
-                    set frontmost to true
-                end tell
-            end if
-        end tell
-        """
-        if let appleScript = NSAppleScript(source: script) {
-            var err: NSDictionary?
-            appleScript.executeAndReturnError(&err)
         }
     }
 }

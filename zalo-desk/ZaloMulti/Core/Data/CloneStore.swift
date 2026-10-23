@@ -235,70 +235,11 @@ class CloneStore: ObservableObject {
                 clones = try JSONDecoder().decode([CloneAccount].self, from: data)
             } catch {
                 DiagnosticLogger.error("STORE", "loadClones: decode FAILED", error: error)
+                clones = []
             }
-        }
-        
-        // Tự động phục hồi clones từ đĩa nếu storage trống
-        if clones.isEmpty {
-            let basePath = "\(NSHomeDirectory())/Library/Application Support/ZaloMulti/Data"
-            let fm = FileManager.default
-            if let entries = try? fm.contentsOfDirectory(atPath: basePath) {
-                for dir in entries.sorted() where dir.hasPrefix("clone") {
-                    let indexStr = dir.replacingOccurrences(of: "clone", with: "")
-                    if let index = Int(indexStr) {
-                        let profile = AvatarExtractor.extractProfile(cloneIndex: index)
-                        let name = profile?.displayName ?? "Zalo Clone \(index)"
-                        let phone = ""
-                        let recovered = CloneAccount(
-                            id: UUID(),
-                            name: name,
-                            phoneNumber: phone,
-                            cloneIndex: index,
-                            bundleID: "com.vng.zalo.clone\(index)",
-                            appPath: "/Applications/ZaloClone\(index).app",
-                            dataPath: "\(basePath)/clone\(index)/ZaloData",
-                            status: .stopped,
-                            processID: nil,
-                            avatarColor: CloneAccount.colorForIndex(index)
-                        )
-                        clones.append(recovered)
-                    }
-                }
-                if !clones.isEmpty {
-                    saveClones()
-                    DiagnosticLogger.info("STORE", "Đã tự động phục hồi \(clones.count) clones từ thư mục đĩa")
-                }
-            }
+        } else {
+            clones = []
         }
     }
     
-    /// Startup sync — dùng kill(pid,0) cho PID đã biết, pgrep chỉ cho orphan recovery
-    private func syncProcessStatus() {
-        DiagnosticLogger.info("STORE", "Sync process status cho \(clones.count) clones...")
-        var changed = 0
-        
-        for i in clones.indices {
-            if let pid = clones[i].processID, ProcessManager.isRunning(pid: pid) {
-                // PID vẫn sống → running
-                clones[i].status = .running
-            } else {
-                // PID không có hoặc đã chết → kiểm tra orphan bằng pgrep (1 lần duy nhất)
-                let orphanAlive = ProcessManager.checkCloneRunning(
-                    cloneIndex: clones[i].cloneIndex, knownPID: nil
-                )
-                if orphanAlive {
-                    clones[i].status = .running
-                    DiagnosticLogger.info("STORE", "  '\(clones[i].name)' → running (orphan recovered)")
-                } else {
-                    if clones[i].status == .running { changed += 1 }
-                    clones[i].status = .stopped
-                    clones[i].processID = nil
-                }
-            }
-        }
-        
-        if changed > 0 {
-            saveClones()
-        }
-    }
-}
+
