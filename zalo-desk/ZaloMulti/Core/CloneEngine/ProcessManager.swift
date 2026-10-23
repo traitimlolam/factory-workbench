@@ -2,6 +2,7 @@
 // ZaloMulti
 
 import Foundation
+import AppKit
 import Combine
 
 @MainActor
