@@ -27,17 +27,12 @@ def result_template() -> dict:
 def main() -> int:
     report = result_template()
     try:
-        # Check installed Xcodes
-        xcodes = glob.glob("/Applications/Xcode*.app")
-        print("Installed Xcodes:", xcodes)
-        report["installed_xcodes"] = xcodes
-        
-        # Switch to latest Xcode (Xcode 16 if present, else 15)
+        # Switch to Xcode 16.2
+        xcodes = glob.glob("/Applications/Xcode_16*.app")
         for xc in sorted(xcodes, reverse=True):
             dev_path = f"{xc}/Contents/Developer"
             if Path(dev_path).exists():
                 subprocess.run(["sudo", "xcode-select", "-s", dev_path], check=False)
-                print(f"Selected: {dev_path}")
                 break
 
         zalo_desk = ROOT / "zalo-desk"
@@ -54,21 +49,19 @@ def main() -> int:
                 f"CONFIGURATION_BUILD_DIR={build_dir}",
                 "clean", "build"
             ]
-            print("Starting xcodebuild...")
             res = subprocess.run(build_cmd, capture_output=True, text=True)
             if res.returncode == 0:
-                print("xcodebuild succeeded! Ad-hoc codesigning...")
                 app_path = build_dir / "ZaloMulti.app"
                 subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app_path)], check=True)
                 zip_path = ROOT / "ZaloDesk_ARM64.zip"
                 subprocess.run(["zip", "-r", "-y", str(zip_path), "ZaloMulti.app"], cwd=str(build_dir), check=True)
                 report["zalo_desk_zip_b64"] = base64.b64encode(zip_path.read_bytes()).decode()
                 report["zalo_desk_build_status"] = "SUCCESS"
-                print("Packaged ZaloDesk_ARM64.zip successfully, size:", zip_path.stat().st_size)
             else:
                 report["zalo_desk_build_status"] = "FAILED"
-                report["zalo_desk_build_error"] = (res.stderr[-1000:] or res.stdout[-1000:])
-                print("xcodebuild failed:", report["zalo_desk_build_error"])
+                # Extract all error lines from stdout and stderr
+                errors = [line for line in (res.stdout + res.stderr).splitlines() if "error:" in line.lower()]
+                report["zalo_desk_build_error"] = errors[:20]
     except Exception as exc:
         report["loi"].append(str(exc))
     finally:

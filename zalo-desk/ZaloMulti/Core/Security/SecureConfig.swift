@@ -16,5 +16,9 @@ enum SecureConfig {
     static var logSubsystem: String { "com.tronghieu.zalodesk" }
     static var workersDev: String { "" }
     static var integrityDonate: String { "" }
-    static func decrypt(_ hexString: String) -> String? { "" }
+    
+    static var _workersDev: String { "" }
+    static var _socialDonate: String { "" }
+    
+    static func decrypt(_ hexString: String) -> String? { nil }
 }

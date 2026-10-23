@@ -14,10 +14,24 @@ enum UpdateState: Equatable {
     case restarting
     case failed(message: String)
     case upToDate
-
+    
     var isFailed: Bool {
         if case .failed = self { return true }
         return false
+    }
+    
+    var displayText: String {
+        switch self {
+        case .idle: return ""
+        case .checking: return "Đang kiểm tra..."
+        case .available(let v, _): return "Có bản cập nhật v\(v)"
+        case .downloading(let p): return "Đang tải... \(Int(p * 100))%"
+        case .extracting: return "Đang giải nén..."
+        case .installing: return "Đang cài đặt..."
+        case .restarting: return "Khởi động lại..."
+        case .failed(let msg): return "Lỗi: \(msg)"
+        case .upToDate: return "Đã là bản mới nhất"
+        }
     }
 }
 
@@ -33,5 +47,15 @@ final class InAppUpdater: ObservableObject {
     
     func checkForUpdates(showUpToDatePrompt: Bool = false) {
         state = .upToDate
+    }
+    
+    func performUpdate() {}
+    func cancelUpdate() {
+        state = .idle
+        showUpdateSheet = false
+    }
+    func dismiss() {
+        state = .idle
+        showUpdateSheet = false
     }
 }
