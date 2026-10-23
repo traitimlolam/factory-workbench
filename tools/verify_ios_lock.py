@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 from datetime import datetime
+import glob
 from pathlib import Path
 import shlex
 import subprocess
@@ -26,6 +27,19 @@ def result_template() -> dict:
 def main() -> int:
     report = result_template()
     try:
+        # Check installed Xcodes
+        xcodes = glob.glob("/Applications/Xcode*.app")
+        print("Installed Xcodes:", xcodes)
+        report["installed_xcodes"] = xcodes
+        
+        # Switch to latest Xcode (Xcode 16 if present, else 15)
+        for xc in sorted(xcodes, reverse=True):
+            dev_path = f"{xc}/Contents/Developer"
+            if Path(dev_path).exists():
+                subprocess.run(["sudo", "xcode-select", "-s", dev_path], check=False)
+                print(f"Selected: {dev_path}")
+                break
+
         zalo_desk = ROOT / "zalo-desk"
         if (zalo_desk / "ZaloMulti.xcodeproj").exists():
             build_dir = zalo_desk / "build" / "Release"
