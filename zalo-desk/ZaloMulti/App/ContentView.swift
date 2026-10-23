@@ -1,6 +1,9 @@
 // ContentView.swift
-// Zalo Desk — Unified Multi-Account Manager for macOS
-// Copyright © 2026 Nguyễn Trọng Hiếu. All rights reserved.
+// ZaloMulti
+//
+// Root view của Zalo Desk v2.5 — Giao diện thanh Rail bên trái (Zalo Blue),
+// chuyển đổi mượt mà giữa Nick Chính và các Clone,
+// kèm SheetPresenter native AppKit chuẩn xác 100%.
 
 import SwiftUI
 import AppKit
@@ -12,7 +15,6 @@ struct ContentView: View {
     // nil = Nick Zalo Chính (Mặc định)
     @State private var selectedClone: CloneAccount? = nil
     @State private var activeTab: SidebarTab = .chat
-    @State private var isShowingAddClone: Bool = false
     
     enum SidebarTab {
         case chat
@@ -25,8 +27,7 @@ struct ContentView: View {
             // LEFT RAIL SIDEBAR (Zalo Blue #0068FF)
             ZaloRailSidebar(
                 selectedClone: $selectedClone,
-                activeTab: $activeTab,
-                isShowingAddClone: $isShowingAddClone
+                activeTab: $activeTab
             )
             .frame(width: 68)
             .background(Color(red: 0.0, green: 0.41, blue: 1.0))
@@ -41,7 +42,7 @@ struct ContentView: View {
                     AccountDetailView(
                         clone: selectedClone,
                         onOpenAddClone: {
-                            isShowingAddClone = true
+                            SheetPresenter.presentAddClone(store: store)
                         }
                     )
                 case .settings:
@@ -51,8 +52,11 @@ struct ContentView: View {
             .frame(minWidth: 700, minHeight: 560)
         }
         .frame(minWidth: 768, minHeight: 560)
-        .sheet(isPresented: $isShowingAddClone) {
-            AddCloneView()
+        .onReceive(store.$showAddCloneSheet) { show in
+            if show {
+                store.showAddCloneSheet = false
+                SheetPresenter.presentAddClone(store: store)
+            }
         }
         .alert("Lỗi", isPresented: $store.showError) {
             Button("OK") { store.showError = false }
@@ -64,61 +68,66 @@ struct ContentView: View {
 
 // MARK: - Left Rail Sidebar
 struct ZaloRailSidebar: View {
-    @ObservedObject private var store = CloneStore.shared
-    @ObservedObject private var notifMonitor = NotificationMonitor.shared
+    @ObservedObject var store = CloneStore.shared
+    @ObservedObject var notifMonitor = NotificationMonitor.shared
     
     @Binding var selectedClone: CloneAccount?
     @Binding var activeTab: ContentView.SidebarTab
-    @Binding var isShowingAddClone: Bool
     
     var body: some View {
-        VStack(spacing: 0) {
-            // macOS Window Controls Spacing
-            Color.clear
-                .frame(height: 38)
+        VStack(spacing: 16) {
+            // TOP: LOGO / HEADER
+            VStack(spacing: 4) {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.top, 14)
+                
+                Text("Zalo Desk")
+                    .font(.system(size: 9, weight: .heavy))
+                    .foregroundColor(.white.opacity(0.85))
+            }
+            
+            Divider()
+                .background(Color.white.opacity(0.2))
+                .padding(.horizontal, 10)
             
             // AVATAR STACK
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 12) {
-                    // 1. Nick Zalo Chính (Avatar người dùng thật của Sếp)
-                    AccountRailAvatar(
-                        avatarImageName: "UserAvatar",
+                    // 1. Nick Zalo Chính
+                    RailAvatarItem(
                         title: "Nick Chính",
-                        isSelected: selectedClone == nil && !isShowingAddClone,
-                        unreadCount: 0,
-                        isRunning: true,
-                        action: {
-                            selectedClone = nil
-                            isShowingAddClone = false
-                            activeTab = .chat
-                            ProcessManager.focusDefaultZalo()
-                        }
-                    )
+                        initials: "Z",
+                        systemIcon: "person.crop.circle.fill",
+                        avatarColor: Color(red: 0.0, green: 0.55, blue: 1.0),
+                        isSelected: selectedClone == nil,
+                        badgeCount: notifMonitor.unreadCount(for: 0),
+                        hasCustomImage: true
+                    ) {
+                        selectedClone = nil
+                        activeTab = .chat
+                    }
                     
-                    // 2. Danh sách Clones (nếu có)
+                    // 2. Danh sách Clone Accounts
                     ForEach(store.clones) { clone in
-                        let unread = notifMonitor.notifications.filter {
-                            !$0.isRead && ($0.cloneId == clone.id || $0.cloneName == clone.name)
-                        }.count
-                        
-                        AccountRailAvatar(
-                            avatarImageName: "UserAvatar",
+                        RailAvatarItem(
                             title: clone.name,
-                            isSelected: selectedClone?.id == clone.id && !isShowingAddClone,
-                            unreadCount: unread,
-                            isRunning: clone.status == .running,
-                            action: {
-                                selectedClone = clone
-                                isShowingAddClone = false
-                                activeTab = .chat
-                                store.focusClone(clone)
-                            }
-                        )
+                            initials: String(clone.name.prefix(2)).uppercased(),
+                            systemIcon: nil,
+                            avatarColor: clone.avatarColor,
+                            isSelected: selectedClone?.id == clone.id,
+                            badgeCount: notifMonitor.unreadCount(for: clone.cloneIndex),
+                            hasCustomImage: false
+                        ) {
+                            selectedClone = clone
+                            activeTab = .chat
+                        }
                     }
                     
                     // 3. Nút Thêm Tài Khoản (+)
                     Button(action: {
-                        isShowingAddClone = true
+                        SheetPresenter.presentAddClone(store: store)
                     }) {
                         ZStack {
                             Circle()
@@ -134,116 +143,104 @@ struct ZaloRailSidebar: View {
                     }
                     .buttonStyle(.plain)
                     .help("Thêm tài khoản Zalo mới (+)")
+                    .padding(.top, 4)
                 }
-                .padding(.top, 4)
-                .padding(.bottom, 8)
-            }
-            .frame(maxHeight: 340)
-            
-            Divider()
-                .background(Color.white.opacity(0.2))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-            
-            // SECONDARY NAVIGATION
-            VStack(spacing: 14) {
-                SidebarIconButton(
-                    iconName: "message.fill",
-                    label: "Tin nhắn",
-                    isActive: activeTab == .chat && !isShowingAddClone,
-                    action: {
-                        isShowingAddClone = false
-                        activeTab = .chat
-                        if let c = selectedClone {
-                            store.focusClone(c)
-                        } else {
-                            ProcessManager.focusDefaultZalo()
-                        }
-                    }
-                )
-                
-                SidebarIconButton(
-                    iconName: "person.2.fill",
-                    label: "Tài khoản",
-                    isActive: activeTab == .clones && !isShowingAddClone,
-                    action: {
-                        isShowingAddClone = false
-                        activeTab = .clones
-                    }
-                )
+                .padding(.vertical, 4)
             }
             
             Spacer()
             
-            // BOTTOM SETTINGS & BRANDING
-            VStack(spacing: 12) {
-                SidebarIconButton(
-                    iconName: "gearshape.fill",
-                    label: "Cài đặt",
-                    isActive: activeTab == .settings && !isShowingAddClone,
-                    action: {
-                        isShowingAddClone = false
-                        activeTab = .settings
-                    }
-                )
+            // BOTTOM UTILITY ICONS
+            VStack(spacing: 14) {
+                RailIconButton(
+                    icon: "message.fill",
+                    label: "Tin nhắn",
+                    isActive: activeTab == .chat
+                ) {
+                    activeTab = .chat
+                }
                 
-                Text("Zalo Desk")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(Color.white.opacity(0.6))
-                    .padding(.bottom, 12)
+                RailIconButton(
+                    icon: "person.2.fill",
+                    label: "Tài khoản",
+                    isActive: activeTab == .clones
+                ) {
+                    activeTab = .clones
+                }
+                
+                RailIconButton(
+                    icon: "gearshape.fill",
+                    label: "Cài đặt",
+                    isActive: activeTab == .settings
+                ) {
+                    activeTab = .settings
+                }
             }
+            .padding(.bottom, 16)
         }
     }
 }
 
-// MARK: - Avatar Component on Sidebar Rail
-struct AccountRailAvatar: View {
-    let avatarImageName: String
+// MARK: - Rail Avatar Item
+struct RailAvatarItem: View {
     let title: String
+    let initials: String
+    let systemIcon: String?
+    let avatarColor: Color
     let isSelected: Bool
-    let unreadCount: Int
-    let isRunning: Bool
+    let badgeCount: Int
+    var hasCustomImage: Bool = false
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            ZStack(alignment: .bottomTrailing) {
-                // Avatar Frame with Selection Ring
+            ZStack(alignment: .topTrailing) {
                 ZStack {
+                    // Selection indicator ring
                     if isSelected {
                         Circle()
                             .stroke(Color.white, lineWidth: 2.5)
                             .frame(width: 48, height: 48)
-                            .shadow(color: Color.black.opacity(0.25), radius: 3)
                     }
                     
-                    Image(avatarImageName)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 42, height: 42)
-                        .clipShape(Circle())
+                    // Avatar Circle
+                    if hasCustomImage, let img = NSImage(named: "AppAvatar") {
+                        Image(nsImage: img)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 40, height: 40)
+                            .clipShape(Circle())
+                    } else if let icon = systemIcon {
+                        Circle()
+                            .fill(avatarColor)
+                            .frame(width: 40, height: 40)
+                        Image(systemName: icon)
+                            .font(.system(size: 20))
+                            .foregroundColor(.white)
+                    } else {
+                        Circle()
+                            .fill(avatarColor)
+                            .frame(width: 40, height: 40)
+                        Text(initials)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                    }
                 }
                 
-                // Status Indicator (Green dot if active)
-                if isRunning {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 11, height: 11)
-                        .overlay(Circle().stroke(Color(red: 0.0, green: 0.41, blue: 1.0), lineWidth: 2))
-                        .offset(x: 2, y: 2)
-                }
-                
-                // Unread Badge
-                if unreadCount > 0 {
-                    Text(unreadCount > 99 ? "99+" : "\(unreadCount)")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Capsule().fill(Color.red))
-                        .offset(x: 6, y: -28)
+                // Badge đỏ khi có tin nhắn chưa đọc
+                if badgeCount > 0 {
+                    ZStack {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 18, height: 18)
+                        Text(badgeCount > 99 ? "99+" : "\(badgeCount)")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .offset(x: 2, y: -2)
                 }
             }
+            .frame(width: 48, height: 48)
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -251,9 +248,9 @@ struct AccountRailAvatar: View {
     }
 }
 
-// MARK: - Sidebar Icon Navigation Button
-struct SidebarIconButton: View {
-    let iconName: String
+// MARK: - Rail Icon Button
+struct RailIconButton: View {
+    let icon: String
     let label: String
     let isActive: Bool
     let action: () -> Void
@@ -262,14 +259,13 @@ struct SidebarIconButton: View {
         Button(action: action) {
             ZStack {
                 if isActive {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.2))
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.white.opacity(0.22))
                         .frame(width: 44, height: 44)
                 }
-                
-                Image(systemName: iconName)
-                    .font(.system(size: 19, weight: isActive ? .bold : .regular))
-                    .foregroundColor(isActive ? .white : Color.white.opacity(0.75))
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(isActive ? .white : .white.opacity(0.65))
             }
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
@@ -279,50 +275,64 @@ struct SidebarIconButton: View {
     }
 }
 
-// MARK: - Account Detail Dashboard View
+// MARK: - Account Detail View
 struct AccountDetailView: View {
     let clone: CloneAccount?
-    let onOpenAddClone: () -> Void
-    @ObservedObject private var store = CloneStore.shared
+    var onOpenAddClone: () -> Void
+    @ObservedObject var store = CloneStore.shared
     
-    var accountName: String {
+    var displayName: String {
         clone?.name ?? "Nick Zalo Chính"
     }
     
     var isRunning: Bool {
-        clone?.status == .running || clone == nil
+        if let c = clone {
+            return c.status == .running
+        }
+        return true
     }
     
     var body: some View {
         VStack(spacing: 24) {
-            // Header Profile Card
-            VStack(spacing: 14) {
-                // Large Avatar
-                Image("UserAvatar")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 80, height: 80)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color(red: 0.0, green: 0.41, blue: 1.0), lineWidth: 3))
-                    .shadow(radius: 4)
-                
-                Text(accountName)
+            Spacer()
+            
+            // Big Avatar
+            ZStack {
+                if clone == nil, let img = NSImage(named: "AppAvatar") {
+                    Image(nsImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 90, height: 90)
+                        .clipShape(Circle())
+                        .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+                } else {
+                    Circle()
+                        .fill(clone?.avatarColor ?? Color(red: 0.0, green: 0.41, blue: 1.0))
+                        .frame(width: 90, height: 90)
+                        .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+                    
+                    Text(clone != nil ? String(clone!.name.prefix(2)).uppercased() : "Z")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.white)
+                }
+            }
+            
+            VStack(spacing: 6) {
+                Text(displayName)
                     .font(.system(size: 22, weight: .bold))
                 
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Circle()
-                        .fill(isRunning ? Color.green : Color.gray)
+                        .fill(isRunning ? Color.green : Color.secondary)
                         .frame(width: 8, height: 8)
                     Text(isRunning ? "Đang hoạt động (Online)" : "Chưa khởi chạy")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                 }
             }
-            .padding(.top, 40)
             
             // Action Buttons
             VStack(spacing: 12) {
-                // Primary Switch Button
                 Button(action: {
                     if let c = clone {
                         store.focusClone(c)
@@ -339,7 +349,7 @@ struct AccountDetailView: View {
                     .frame(minWidth: 260, minHeight: 38, maxHeight: 38)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(Color(red: 0.0, green: 0.41, blue: 1.0))
+                .controlSize(.large)
                 
                 // Secondary Add Clone Button
                 Button(action: {
@@ -354,38 +364,82 @@ struct AccountDetailView: View {
                     .frame(minWidth: 260, minHeight: 34, maxHeight: 34)
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.regular)
             }
+            .padding(.top, 8)
             
-            // Feature Highlights
-            VStack(alignment: .leading, spacing: 12) {
-                FeatureRow(icon: "shield.checkmark.fill", text: "Dữ liệu biệt lập 100%, bảo vệ an toàn cho Bot & Khách")
-                FeatureRow(icon: "phone.fill", text: "Hỗ trợ đầy đủ gọi điện Zalo & gửi file dung lượng lớn")
-                FeatureRow(icon: "bell.badge.fill", text: "Thông báo tin nhắn mới trực tiếp trên icon Sidebar")
+            // Feature Highlights Box
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.shield.fill")
+                        .foregroundColor(.green)
+                    Text("Dữ liệu biệt lập 100%, bảo vệ an toàn cho Bot & Khách")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                HStack(spacing: 8) {
+                    Image(systemName: "phone.fill")
+                        .foregroundColor(.blue)
+                    Text("Hỗ trợ đầy đủ gọi điện Zalo & gửi file dung lượng lớn")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                HStack(spacing: 8) {
+                    Image(systemName: "bell.badge.fill")
+                        .foregroundColor(.orange)
+                    Text("Thông báo tin nhắn mới trực tiếp trên icon Sidebar")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
             }
-            .padding()
+            .padding(16)
             .background(RoundedRectangle(cornerRadius: 12).fill(Color(NSColor.controlBackgroundColor)))
-            .padding(.horizontal, 40)
-            .padding(.top, 10)
+            .padding(.top, 16)
             
             Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
     }
 }
 
-struct FeatureRow: View {
-    let icon: String
-    let text: String
+// MARK: - Sheet Presenter (Native AppKit Floating Modal Window)
+@MainActor
+final class SheetPresenter: NSObject {
+    static let shared = SheetPresenter()
+    private var activeModalWindow: NSWindow?
     
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundColor(Color(red: 0.0, green: 0.41, blue: 1.0))
-                .font(.system(size: 16))
-                .frame(width: 22)
-            Text(text)
-                .font(.system(size: 13))
-                .foregroundColor(.primary)
-            Spacer()
+    static func presentAddClone(store: CloneStore) {
+        if let existing = shared.activeModalWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        
+        let view = AddCloneView(onDismiss: {
+            dismissCurrent()
+        })
+        .environmentObject(store)
+        
+        let hostingController = NSHostingController(rootView: view)
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "Thêm Tài Khoản Zalo Clone"
+        window.setContentSize(NSSize(width: 480, height: 360))
+        window.styleMask = [.titled, .closable]
+        window.isMovableByWindowBackground = true
+        window.isReleasedWhenClosed = false
+        window.level = .floating
+        window.center()
+        
+        shared.activeModalWindow = window
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    
+    static func dismissCurrent() {
+        if let win = shared.activeModalWindow {
+            win.close()
+            shared.activeModalWindow = nil
         }
     }
 }

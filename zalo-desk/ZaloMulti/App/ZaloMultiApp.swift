@@ -5,9 +5,23 @@
 // Auto-update kiểu Telegram: nhấn "Cập nhật" → tải + cài + khởi động lại.
 
 import SwiftUI
+import AppKit
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            for window in sender.windows where !(window is NSPanel) {
+                window.makeKeyAndOrderFront(self)
+                return true
+            }
+        }
+        return true
+    }
+}
 
 @main
 struct ZaloMultiApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @ObservedObject private var updater = InAppUpdater.shared
     
     init() {
@@ -25,6 +39,7 @@ struct ZaloMultiApp: App {
         let zaloInfo = ZaloCloneEngine().detectSourceZalo()
         DiagnosticLogger.info("APP", "Zalo Desktop: installed=\(zaloInfo.installed), version=\(zaloInfo.version ?? "N/A")")
     }
+    
     var body: some Scene {
         WindowGroup("Zalo Desk") {
             ContentView()

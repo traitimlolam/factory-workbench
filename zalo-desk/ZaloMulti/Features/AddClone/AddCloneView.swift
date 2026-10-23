@@ -7,7 +7,16 @@ import SwiftUI
 
 struct AddCloneView: View {
     @Environment(\.dismiss) var dismiss
+    var onDismiss: (() -> Void)? = nil
     @ObservedObject var store = CloneStore.shared
+    
+    private func closeView() {
+        if let onDismiss = onDismiss {
+            onDismiss()
+        } else {
+            dismiss()
+        }
+    }
     
     @State private var name = ""
     @State private var phoneNumber = ""
@@ -21,7 +30,7 @@ struct AddCloneView: View {
                 Text("Thêm tài khoản Clone")
                     .font(.headline)
                 Spacer()
-                Button("Huỷ") { dismiss() }
+                Button("Huỷ") { closeView() }
                     .keyboardShortcut(.escape)
                     .disabled(isCreating)
             }
@@ -87,12 +96,12 @@ struct AddCloneView: View {
             // Footer — chỉ buttons
             HStack {
                 Spacer()
-                Button("Huỷ") { dismiss() }
+                Button("Huỷ") { closeView() }
                     .keyboardShortcut(.escape)
                     .disabled(isCreating)
                 Button(createComplete ? "Đóng" : "Tạo Clone") {
                     if createComplete {
-                        dismiss()
+                        closeView()
                     } else {
                         createClone()
                     }
@@ -155,7 +164,7 @@ struct AddCloneView: View {
                 }
                 // Auto close sau 1.5s
                 try? await Task.sleep(for: .seconds(1.5))
-                dismiss()
+                closeView()
             } catch {
                 withAnimation { isCreating = false }
                 store.errorMessage = error.localizedDescription
