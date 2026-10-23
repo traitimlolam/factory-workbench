@@ -404,8 +404,14 @@ struct AccountDetailView: View {
 }
 
 // MARK: - Sheet Presenter (Native AppKit Floating Modal Window)
+final class ModalSheetWindow: NSWindow {
+    override func cancelOperation(_ sender: Any?) {
+        self.close()
+    }
+}
+
 @MainActor
-final class SheetPresenter: NSObject {
+final class SheetPresenter: NSObject, NSWindowDelegate {
     static let shared = SheetPresenter()
     private var activeModalWindow: NSWindow?
     
@@ -424,7 +430,7 @@ final class SheetPresenter: NSObject {
         .environmentObject(store)
         
         let hostingController = NSHostingController(rootView: view)
-        let window = NSWindow(contentViewController: hostingController)
+        let window = ModalSheetWindow(contentViewController: hostingController)
         window.title = "Thêm Tài Khoản Zalo Clone"
         window.setContentSize(NSSize(width: 480, height: 360))
         window.styleMask = [.titled, .closable]
@@ -432,6 +438,7 @@ final class SheetPresenter: NSObject {
         window.isReleasedWhenClosed = false
         window.level = .floating
         window.center()
+        window.delegate = shared
         
         shared.activeModalWindow = window
         window.makeKeyAndOrderFront(nil)
@@ -441,8 +448,16 @@ final class SheetPresenter: NSObject {
     
     static func dismissCurrent() {
         if let win = shared.activeModalWindow {
+            DiagnosticLogger.info("UI", "SheetPresenter: Đóng cửa sổ modal")
             win.close()
             shared.activeModalWindow = nil
+        }
+    }
+    
+    nonisolated func windowWillClose(_ notification: Notification) {
+        Task { @MainActor in
+            Self.shared.activeModalWindow = nil
+            DiagnosticLogger.info("UI", "SheetPresenter: Cửa sổ modal đã đóng và giải phóng")
         }
     }
 }
