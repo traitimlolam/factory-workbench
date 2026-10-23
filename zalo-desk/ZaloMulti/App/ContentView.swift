@@ -102,7 +102,7 @@ struct ZaloRailSidebar: View {
                         systemIcon: "person.crop.circle.fill",
                         avatarColor: Color(red: 0.0, green: 0.55, blue: 1.0),
                         isSelected: selectedClone == nil,
-                        badgeCount: notifMonitor.unreadCount(for: 0),
+                        badgeCount: notifMonitor.notifications.filter { !$0.isRead && $0.cloneId == nil }.count,
                         hasCustomImage: true
                     ) {
                         selectedClone = nil
@@ -115,9 +115,9 @@ struct ZaloRailSidebar: View {
                             title: clone.name,
                             initials: String(clone.name.prefix(2)).uppercased(),
                             systemIcon: nil,
-                            avatarColor: clone.avatarColor,
+                            avatarColor: Color(hex: clone.avatarColor),
                             isSelected: selectedClone?.id == clone.id,
-                            badgeCount: notifMonitor.unreadCount(for: clone.cloneIndex),
+                            badgeCount: notifMonitor.notifications.filter { !$0.isRead && $0.cloneId == clone.id }.count,
                             hasCustomImage: false
                         ) {
                             selectedClone = clone
@@ -307,7 +307,7 @@ struct AccountDetailView: View {
                         .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
                 } else {
                     Circle()
-                        .fill(clone?.avatarColor ?? Color(red: 0.0, green: 0.41, blue: 1.0))
+                        .fill(Color(hex: clone?.avatarColor ?? "#0068FF"))
                         .frame(width: 90, height: 90)
                         .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
                     
